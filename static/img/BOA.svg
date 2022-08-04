@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="36.074703mm"
+   height="36.074844mm"
+   viewBox="0 0 36.074703 36.074844"
+   version="1.1"
+   id="svg500"
+   inkscape:version="1.2 (dc2aedaf03, 2022-05-15)"
+   sodipodi:docname="BOA.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview502"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     showgrid="false"
+     showborder="true"
+     inkscape:zoom="0.5946522"
+     inkscape:cx="-38.678071"
+     inkscape:cy="747.49576"
+     inkscape:window-width="3840"
+     inkscape:window-height="2471"
+     inkscape:window-x="-9"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs497" />
+  <g
+     inkscape:label="Katman 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-82.073688,-70.060288)">
+    <g
+       id="g19"
+       transform="matrix(0.35277777,0,0,-0.35277777,108.41631,103.61136)">
+      <path
+         d="m 0,0 h -11.939 l -1.905,51.038 H 1.93 Z m -35.169,0 h -11.94 l -1.904,51.038 h 15.774 z M 27.587,65.318 -74.672,65.316 -74.667,51.05 h 6.18 l -1.923,-51.069 -4.26,0.001 -0.002,-7.136 102.258,0.001 v 7.135 L 22.048,-0.019 20.13,51.047 h 7.456 z"
+         style="fill:#004f9e;fill-opacity:1;fill-rule:nonzero;stroke:none"
+         id="path21" />
+    </g>
+    <g
+       id="g23"
+       transform="matrix(0.35277777,0,0,-0.35277777,100.11122,70.060288)">
+      <path
+         d="m 0,0 -38.134,-22.65 76.267,10e-4 z"
+         style="fill:#004f9e;fill-opacity:1;fill-rule:nonzero;stroke:none"
+         id="path25" />
+    </g>
+  </g>
+</svg>
