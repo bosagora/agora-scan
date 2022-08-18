@@ -79,8 +79,8 @@
         this.config.slotsPerEpoch = 32
         this.config.secondsPerEpoch = this.config.secondsPerSlot * this.config.slotsPerEpoch
         this.config.epochsPerDay = (3600 * 24) / this.config.secondsPerEpoch
-        this.config.minNetworkStake = 32e9 * 16387
-        this.config.minValidatorStake = 32e9
+        this.config.minNetworkStake = 40000e9 * 16387
+        this.config.minValidatorStake = 40000e9
         this.config.symbols = {
           USD: "$",
           EUR: "€",
@@ -424,7 +424,7 @@
               // reject(err)
             })
 
-          fetch("https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=BTC,USD,EUR,GBP,JPY,RUB,CNY,AUD,CAD,CZK")
+          fetch("https://min-api.cryptocompare.com/data/price?fsym=BOA&tsyms=BTC,USD,EUR,GBP,JPY,RUB,CNY,AUD,CAD,CZK")
             .then((res) => res.json())
             .then((data) => {
               this.config.rates = data
@@ -478,8 +478,8 @@
         } else {
           document.getElementById("staking-variable-yourStake-validation").style.display = "none"
         }
-        if (isNaN(p.networkStake) || p.networkStake < 32 * 16387 * 1e9) {
-          p.networkStake = 32 * 16387 * 1e9
+        if (isNaN(p.networkStake) || p.networkStake < 40000 * 16387 * 1e9) {
+          p.networkStake = 40000 * 16387 * 1e9
           document.getElementById("staking-variable-totalStake-validation").style.display = "initial"
         } else {
           document.getElementById("staking-variable-totalStake-validation").style.display = "none"
@@ -560,7 +560,7 @@
         this.result.profitDollarChartData = []
         this.result.profitEthChartData = []
         this.result.breakEvenPoint = null
-        this.result.numberOfPossibleValidators = Math.floor(this.params.stake / (32 * 1e9)).toFixed(0) || "0"
+        this.result.numberOfPossibleValidators = Math.floor(this.params.stake / (40000 * 1e9)).toFixed(0) || "0"
 
         var price = this.params.price
         var costs = this.params.initialCosts //+ this.params.stake * price / 1e9
@@ -574,7 +574,7 @@
         var priceChangePerEpoch = this.params.priceChangePerMonth / epochsPerMonth
         var onlineProbability = this.params.networkOnlineProbability
         var totalStake = this.params.networkStake
-        var valStake = 32e9
+        var valStake = 40000e9
         var baseRewardFactor = 64
         var baseRewardsPerEpoch = 4
         var baseReward = (valStake * baseRewardFactor) / (baseRewardsPerEpoch * Math.sqrt(totalStake))
@@ -606,12 +606,12 @@
 
           var ffgRewards = (3 * baseReward * onlineVal * valStake) / totalStake
           var ffgPenalties = 3 * baseReward
-          var propIncentives = ((1 / 8) * baseReward * onlineVal) / 32
+          var propIncentives = ((1 / 8) * baseReward * onlineVal) / 40000
           var attIncentives = ((7 / 8) * baseReward * 1) / 1
 
           var totalRewards = 0
           totalRewards += ffgRewards * onlineVal
-          totalRewards += propIncentives * 32
+          totalRewards += propIncentives * 40000
           totalRewards += attIncentives * onlineVal
           totalRewards -= ffgPenalties * offlineVal
           var valRewards = totalRewards / allVal
@@ -628,7 +628,7 @@
           costs += costsPerEpoch
           var day = ((i + 1) / epochsPerDay) | 0
           if (day > this.result.incomeDollarChartData.length - 1) {
-            var t = now + (i + 1) * 12 * 32 * 1000
+            var t = now + (i + 1) * 12 * 40000 * 1000
             this.fillChartData(t, (incomeGwei * price) / 1e9, costs, price)
             this.result.networkIssuanceChartData.push([t, (100 * incomeAll) / totalStake])
           }
@@ -673,15 +673,15 @@
 
         document.getElementById("staking-variable-totalStake-percentage").innerText = `${(this.params.networkStakePercent * 100).toFixed(2)} %`
 
-        document.getElementById("stake1d").innerHTML = `${this.result.incomeChartData[1].y.toFixed(4)} ETH (${symbol}${formatNumberSpacing(this.result.incomeChartData[1].income.toFixed(2))})`
-        document.getElementById("stake7d").innerHTML = `${this.result.incomeChartData[7].y.toFixed(4)} ETH (${symbol}${formatNumberSpacing(this.result.incomeChartData[7].income.toFixed(2))})`
-        document.getElementById("stake31d").innerHTML = `${this.result.incomeChartData[31].y.toFixed(4)} ETH (${symbol}${formatNumberSpacing(this.result.incomeChartData[31].income.toFixed(2))})`
-        document.getElementById("stake365d").innerHTML = `${this.result.incomeChartData[365].y.toFixed(4)} ETH (${symbol}${formatNumberSpacing(this.result.incomeChartData[365].income.toFixed(2))})`
+        document.getElementById("stake1d").innerHTML = `${this.result.incomeChartData[1].y.toFixed(4)} BOA (${symbol}${formatNumberSpacing(this.result.incomeChartData[1].income.toFixed(2))})`
+        document.getElementById("stake7d").innerHTML = `${this.result.incomeChartData[7].y.toFixed(4)} BOA (${symbol}${formatNumberSpacing(this.result.incomeChartData[7].income.toFixed(2))})`
+        document.getElementById("stake31d").innerHTML = `${this.result.incomeChartData[31].y.toFixed(4)} BOA (${symbol}${formatNumberSpacing(this.result.incomeChartData[31].income.toFixed(2))})`
+        document.getElementById("stake365d").innerHTML = `${this.result.incomeChartData[365].y.toFixed(4)} BOA (${symbol}${formatNumberSpacing(this.result.incomeChartData[365].income.toFixed(2))})`
 
-        document.getElementById("stakeChange1d").innerHTML = `${(this.result.incomeChartData[1].y - this.params.stake / 1e9).toFixed(4)} ETH (${symbol}${formatNumberSpacing((this.result.incomeChartData[1].income - (this.params.stake / 1e9) * this.params.price).toFixed(2))})`
-        document.getElementById("stakeChange7d").innerHTML = `${(this.result.incomeChartData[7].y - this.params.stake / 1e9).toFixed(4)} ETH (${symbol}${formatNumberSpacing((this.result.incomeChartData[7].income - (this.params.stake / 1e9) * this.params.price).toFixed(2))})`
-        document.getElementById("stakeChange31d").innerHTML = `${(this.result.incomeChartData[31].y - this.params.stake / 1e9).toFixed(4)} ETH (${symbol}${formatNumberSpacing((this.result.incomeChartData[31].income - (this.params.stake / 1e9) * this.params.price).toFixed(2))})`
-        document.getElementById("stakeChange365d").innerHTML = `${(this.result.incomeChartData[365].y - this.params.stake / 1e9).toFixed(4)} ETH (${symbol}${formatNumberSpacing((this.result.incomeChartData[365].income - (this.params.stake / 1e9) * this.params.price).toFixed(2))})`
+        document.getElementById("stakeChange1d").innerHTML = `${(this.result.incomeChartData[1].y - this.params.stake / 1e9).toFixed(4)} BOA (${symbol}${formatNumberSpacing((this.result.incomeChartData[1].income - (this.params.stake / 1e9) * this.params.price).toFixed(2))})`
+        document.getElementById("stakeChange7d").innerHTML = `${(this.result.incomeChartData[7].y - this.params.stake / 1e9).toFixed(4)} BOA (${symbol}${formatNumberSpacing((this.result.incomeChartData[7].income - (this.params.stake / 1e9) * this.params.price).toFixed(2))})`
+        document.getElementById("stakeChange31d").innerHTML = `${(this.result.incomeChartData[31].y - this.params.stake / 1e9).toFixed(4)} BOA (${symbol}${formatNumberSpacing((this.result.incomeChartData[31].income - (this.params.stake / 1e9) * this.params.price).toFixed(2))})`
+        document.getElementById("stakeChange365d").innerHTML = `${(this.result.incomeChartData[365].y - this.params.stake / 1e9).toFixed(4)} BOA (${symbol}${formatNumberSpacing((this.result.incomeChartData[365].income - (this.params.stake / 1e9) * this.params.price).toFixed(2))})`
 
         document.getElementById("return1d").innerHTML = `${symbol}${formatNumberSpacing(this.result.profitDollarChartData[1][1].toFixed(2))}`
         document.getElementById("return7d").innerHTML = `${symbol}${formatNumberSpacing(this.result.profitDollarChartData[7][1].toFixed(2))}`
@@ -711,7 +711,7 @@
           yAxis: [
             {
               title: {
-                text: "Stake in ETH",
+                text: "Stake in BOA",
               },
               offset: 30,
             },
@@ -727,7 +727,7 @@
           data: this.result.incomeChartData,
           tooltip: {
             pointFormatter: function () {
-              return `<span style="color:${this.color}">●</span> ${this.series.name} <b>${this.y.toFixed(3)} ETH </b>(${symbol}${formatNumberSpacing(this.options.income.toFixed(2))})<br>`
+              return `<span style="color:${this.color}">●</span> ${this.series.name} <b>${this.y.toFixed(3)} BOA </b>(${symbol}${formatNumberSpacing(this.options.income.toFixed(2))})<br>`
             },
           },
         })
@@ -883,13 +883,13 @@
       <div class="row my-3">
         <div class="col-xl-4 col-md-5 col-sm-12 py-3 variables">
           <div class="stake">
-            <h5 class="mb-0">Your Ethereum Stake <span id="yourStake-currency">ETH</span> <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="This value represents the amount of ETH you want to use for stacking. If you are not staking on a pool it must be a multiple of 32, since validators can only join the network with a minimum of 32 ETH."></i></h5>
+            <h5 class="mb-0">Your Bosagora Stake <span id="yourStake-currency">BOA</span> <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="This value represents the amount of BOA you want to use for stacking. If you are not staking on a pool it must be a multiple of 40.000, since validators can only join the network with a minimum of 40.000 BOA."></i></h5>
             <div class="justify-content-between d-flex p-3 pb-0 align-content-center">
-              <input id="staking-variable-yourStake" class="staking-variable form-control col-6" type="text" value="32" />
-              <h5 class="mb-0 mt-1" id="validator-count col-6"><span id="validator-count">0</span> <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="The total number of validators that can be added to the network with your stake. A minimum of 32 ethereum is needed for a validator to participate in the network. Ignore this value when you are staking over a pool."></i></h5>
+              <input id="staking-variable-yourStake" class="staking-variable form-control col-6" type="text" value="40000" />
+              <h5 class="mb-0 mt-1" id="validator-count col-6"><span id="validator-count">0</span> <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="The total number of validators that can be added to the network with your stake. A minimum of 40.000 BOA is needed for a validator to participate in the network. Ignore this value when you are staking over a pool."></i></h5>
             </div>
             <div class="p-3 pt-0">
-              <span id="staking-variable-yourStake-validation" class="input-validation">Your ethereum stake must be greater than 0</span>
+              <span id="staking-variable-yourStake-validation" class="input-validation">Your BOA stake must be greater than 0</span>
             </div>
           </div>
           <div class="accordion" id="calculator-accordion">
@@ -921,14 +921,14 @@
                     </div>
                   </div>
                   <div class="setting">
-                    <h6>ETH price in <span class="currency-key">USD</span></h6>
+                    <h6>BOA price in <span class="currency-key">USD</span></h6>
                     <input id="staking-variable-price" class="staking-variable form-control" type="text" value="209.46" />
-                    <span id="staking-variable-price-validation" class="input-validation">Ethereum price must be greater than 0</span>
+                    <span id="staking-variable-price-validation" class="input-validation">BOA price must be greater than 0</span>
                   </div>
                   <div class="setting">
                     <h6>Monthly price change in %</h6>
                     <input id="staking-variable-priceChangePerMonth" class="staking-variable form-control" type="text" value="0" />
-                    <span id="staking-variable-priceChangePerMonth-validation" class="input-validation">Ethereum price change must be a percentage greater or equal to 0</span>
+                    <span id="staking-variable-priceChangePerMonth-validation" class="input-validation">BOA price change must be a percentage greater or equal to 0</span>
                   </div>
                   <div class="setting">
                     <h6>Initial one-time-costs in <span class="currency-key">USD</span></h6>
@@ -969,8 +969,8 @@
                   <div class="setting">
                     <div class="d-flex justify-content-between">
                       <h6 width="50%">
-                        Total staked ether <span id="totalStake-currency">ETH</span>
-                        <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="Total staked ether is the sum of effective balances of all active validators attesting in the network."></i>
+                        Total staked Bosagora <span id="totalStake-currency">BOA</span>
+                        <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="Total staked BOA is the sum of effective balances of all active validators attesting in the network."></i>
                       </h6>
                       <span id="staking-variable-totalStake-percentage"></span>
                     </div>
@@ -1018,8 +1018,8 @@
               <tbody>
                 <tr>
                   <th>Duration</th>
-                  <th>ETH Stake</th>
-                  <th>ETH Reward</th>
+                  <th>BOA Stake</th>
+                  <th>BOA Reward</th>
                   <th>Return</th>
                   <th>Return in %</th>
                 </tr>
