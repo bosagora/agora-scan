@@ -217,6 +217,18 @@ func GetCurrentPrice(r *http.Request) uint64 {
 	return price.GetEthRoundPrice(price.GetEthPrice(cookie.Value))
 }
 
+func GetCurrentExactPrice(r *http.Request) float64 {
+	cookie, err := r.Cookie("currency")
+	if err != nil {
+		return price.GetEthPrice("USD")
+	}
+
+	if cookie.Value == "BOA" {
+		return price.GetEthPrice("USD")
+	}
+	return price.GetEthPrice(cookie.Value)
+}
+
 func GetCurrentPriceFormatted(r *http.Request) string {
 	userAgent := r.Header.Get("User-Agent")
 	userAgent = strings.ToLower(userAgent)
@@ -225,6 +237,18 @@ func GetCurrentPriceFormatted(r *http.Request) string {
 		return fmt.Sprintf("%s", utils.KFormatterEthPrice(price))
 	}
 	return fmt.Sprintf("%s", utils.FormatAddCommas(uint64(price)))
+}
+
+func GetCurrentExactPriceFormatted(r *http.Request) string {
+	userAgent := r.Header.Get("User-Agent")
+	userAgent = strings.ToLower(userAgent)
+	price := GetCurrentExactPrice(r)
+	// if strings.Contains(userAgent, "android") || strings.Contains(userAgent, "iphone") || strings.Contains(userAgent, "windows phone") {
+	// 	return fmt.Sprintf("%s", utils.KFormatterEthPrice(price))
+	// }
+	retval := fmt.Sprintf("%s", utils.FormatFloat(price, 2))
+	logger.Infof("BOA price is %s", retval)
+	return retval
 }
 
 func GetTruncCurrentPriceFormatted(r *http.Request) string {

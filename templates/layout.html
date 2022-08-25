@@ -97,42 +97,42 @@
                     case 'AUD':
                         document.getElementById('currentCurrencySymbol').textContent = 'A$'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.AudTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.AudRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatFloat .Rates.AudExactPrice 2}}
                         break
 	                case 'CAD':
                         document.getElementById('currentCurrencySymbol').textContent = 'C$'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.CadTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.CadRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatFloat .Rates.CadExactPrice 2}}
 		                break
 	                case 'CNY':
                         document.getElementById('currentCurrencySymbol').textContent = '¥'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.CnyTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.CnyRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatFloat .Rates.CnyExactPrice 2}}
 		                break
 	                case 'EUR':
                         document.getElementById('currentCurrencySymbol').textContent = '€'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.EurTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.EurRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatFloat .Rates.EurExactPrice 2}}
 		                break
 	                case 'GBP':
                         document.getElementById('currentCurrencySymbol').textContent = '£'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.GbpTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.GbpRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatFloat .Rates.GbpExactPrice 2}}
 		                break
 	                case 'JPY':
                         document.getElementById('currentCurrencySymbol').textContent = '¥'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.JpyTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.JpyRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatFloat .Rates.JpyExactPrice 2}}
 		                break
 	                case 'RUB':
                         document.getElementById('currentCurrencySymbol').textContent = '₽'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.RubTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.RubRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatFloat .Rates.RubExactPrice 2}}
 		                break
                     default:
                         document.getElementById('currentCurrencySymbol').textContent = '$'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.UsdTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.UsdRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatFloat .Rates.UsdExactPrice 2}}
 		                break
                 }
             })
