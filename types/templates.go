@@ -47,20 +47,28 @@ type PageRates struct {
 	EthRoundPrice         uint64
 	EthTruncPrice         string
 	UsdRoundPrice         uint64
+	UsdExactPrice         float64
 	UsdTruncPrice         string
 	EurRoundPrice         uint64
+	EurExactPrice         float64
 	EurTruncPrice         string
 	GbpRoundPrice         uint64
+	GbpExactPrice         float64
 	GbpTruncPrice         string
 	CnyRoundPrice         uint64
+	CnyExactPrice         float64
 	CnyTruncPrice         string
 	RubRoundPrice         uint64
+	RubExactPrice         float64
 	RubTruncPrice         string
 	CadRoundPrice         uint64
+	CadExactPrice         float64
 	CadTruncPrice         string
 	AudRoundPrice         uint64
+	AudExactPrice         float64
 	AudTruncPrice         string
 	JpyRoundPrice         uint64
+	JpyExactPrice         float64
 	JpyTruncPrice         string
 	Currency              string
 	CurrentPriceFormatted string
