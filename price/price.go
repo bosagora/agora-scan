@@ -21,7 +21,7 @@ type EthPrice struct {
 		Usd float64 `json:"usd"`
 		Gbp float64 `json:"gbp"`
 		Aud float64 `json:"aud"`
-	} `json:"boa"`
+	} `json:"bosagora"`
 }
 
 var ethPrice = new(EthPrice)
@@ -52,7 +52,6 @@ func fetchPrice() {
 	defer resp.Body.Close()
 
 	err = json.NewDecoder(resp.Body).Decode(&ethPrice)
-
 	if err != nil {
 		logger.Errorf("error decoding ETH price json response to struct: %v", err)
 		return
