@@ -418,7 +418,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	var epochHistory []*types.IndexPageEpochHistory
 	err = db.WriterDb.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epochLowerBound)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving staked ether history: %v", err)
+		return nil, fmt.Errorf("error retrieving staked BOA history: %v", err)
 	}
 
 	if len(epochHistory) > 0 {
