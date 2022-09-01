@@ -179,9 +179,9 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 	pdf.SetTextColor(24, 24, 24)
 	pdf.SetFillColor(255, 255, 255)
 	// pdf.Ln(-1)
-	pdf.CellFormat(0, maxHt, fmt.Sprintf("Total Income ETH %s | %s", hist.TotalETH, hist.TotalCurrency), "", 0, "CM", true, 0, "")
+	pdf.CellFormat(0, maxHt, fmt.Sprintf("Total Income BOA %s | %s", hist.TotalETH, hist.TotalCurrency), "", 0, "CM", true, 0, "")
 
-	header := [colCount]string{"Date", "End-of-date balance ETH", "Income for date ETH", "Price of ETH for date", "Income for date"}
+	header := [colCount]string{"Date", "End-of-date balance BOA", "Income for date BOA", "Price of BOA for date", "Income for date"}
 
 	// pdf.SetMargins(marginH, marginH, marginH)
 	pdf.Ln(10)
@@ -239,7 +239,7 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 	pdf.Ln(10)
 	pdf.SetFont("Times", "", 9)
 
-	header = [colCount]string{"Index", "Balance Activation ETH", "Balance ETH", "Income ETH", "Last Attestation"}
+	header = [colCount]string{"Index", "Balance Activation BOA", "Balance BOA", "Income BOA", "Last Attestation"}
 
 	// pdf.SetMargins(marginH, marginH, marginH)
 	// pdf.Ln(10)
