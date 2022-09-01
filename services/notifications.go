@@ -1180,7 +1180,7 @@ func (n *validatorBalanceDecreasedNotification) GetInfo(includeUrl bool) string 
 	balance := float64(n.EndBalance) / 1e9
 	diff := float64(n.StartBalance-n.EndBalance) / 1e9
 
-	generalPart := fmt.Sprintf(`The balance of validator %[1]v decreased for 3 consecutive epochs by %.9[2]f ETH to %.9[3]f ETH from epoch %[4]v to epoch %[5]v.`, n.ValidatorIndex, diff, balance, n.StartEpoch, n.EndEpoch)
+	generalPart := fmt.Sprintf(`The balance of validator %[1]v decreased for 3 consecutive epochs by %.9[2]f BOA to %.9[3]f BOA from epoch %[4]v to epoch %[5]v.`, n.ValidatorIndex, diff, balance, n.StartEpoch, n.EndEpoch)
 	if includeUrl {
 		return generalPart + getUrlPart(n.ValidatorIndex)
 	}
