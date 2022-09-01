@@ -137,6 +137,7 @@ type Config struct {
 		PoolsUpdater struct {
 			Enabled bool `yaml:"enabled" envconfig:"FRONTEND_POOLS_UPDATER"`
 		} `yaml:"poolsUpdater"`
+		Eth1Explorer string `yaml:"eth1Explorer" envconfig:"FRONTEND_ETH1_EXPLORER"`
 	} `yaml:"frontend"`
 	Metrics struct {
 		Enabled bool   `yaml:"enabled" envconfig:"METRICS_ENABLED"`
