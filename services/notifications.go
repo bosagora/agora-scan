@@ -2092,9 +2092,9 @@ func (n *monitorMachineNotification) GetInfo(includeUrl bool) string {
 	case types.MonitoringMachineCpuLoadEventName:
 		return fmt.Sprintf(`Your staking machine "%v" has reached your configured CPU usage threshold.`, n.MachineName)
 	case types.MonitoringMachineSwitchedToETH1FallbackEventName:
-		return fmt.Sprintf(`Your staking machine "%v" has switched to your configured ETH1 fallback`, n.MachineName)
+		return fmt.Sprintf(`Your staking machine "%v" has switched to your configured BizNet fallback`, n.MachineName)
 	case types.MonitoringMachineSwitchedToETH2FallbackEventName:
-		return fmt.Sprintf(`Your staking machine "%v" has switched to your configured ETH2 fallback`, n.MachineName)
+		return fmt.Sprintf(`Your staking machine "%v" has switched to your configured Beacon fallback`, n.MachineName)
 	case types.MonitoringMachineMemoryUsageEventName:
 		return fmt.Sprintf(`Your staking machine "%v" has reached your configured RAM threshold.`, n.MachineName)
 	}
@@ -2110,9 +2110,9 @@ func (n *monitorMachineNotification) GetTitle() string {
 	case types.MonitoringMachineCpuLoadEventName:
 		return "High CPU Load"
 	case types.MonitoringMachineSwitchedToETH1FallbackEventName:
-		return "ETH1 Fallback Active"
+		return "BizNet Fallback Active"
 	case types.MonitoringMachineSwitchedToETH2FallbackEventName:
-		return "ETH2 Fallback Active"
+		return "Beacon Fallback Active"
 	case types.MonitoringMachineMemoryUsageEventName:
 		return "Memory Warning"
 	}
