@@ -31,9 +31,11 @@ func Poap(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "more", "/poap", "POAP")
 	data.HeaderAd = true
 	data.Data = struct {
-		PoapClients []string
+		PoapClients  []string
+		Eth1Explorer string
 	}{
-		PoapClients: poapClients,
+		PoapClients:  poapClients,
+		Eth1Explorer: utils.Config.Frontend.Eth1Explorer,
 	}
 
 	err := poapTemplate.ExecuteTemplate(w, "layout", data)

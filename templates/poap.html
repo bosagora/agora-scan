@@ -95,7 +95,7 @@
                     $(td).css('justify-content', 'space-between')
                 },
                 render: function(data, type, row) {
-                    return `<a style="display: inline-block; max-width: 130px;" class="text-truncate" href="https://etherchain.org/account/${data}">${data}</a><i style="padding: .25rem;" class="fa fa-copy text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${data}"></i>`
+                    return `<a style="display: inline-block; max-width: 130px;" class="text-truncate" href="{{.Eth1Explorer}}/address/${data}">${data}</a><i style="padding: .25rem;" class="fa fa-copy text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${data}"></i>`
                 }
             },
             {
@@ -128,7 +128,7 @@
                 // ajax: '/poap/data',
                 pagingType: 'input',
                 language: {
-                    searchPlaceholder: 'Search by ETH1 Address',
+                    searchPlaceholder: 'Search by BizNet Address',
                     search: '',
                     paginate: {
                         previous: '<i class="fas fa-chevron-left"></i>',
@@ -239,8 +239,8 @@
             <b>There are 3 different tokens</b>
           </p>
           <p><b>Genesis depositor:</b> Anyone who deposits 40,000 BOA on the deposit contract.</p>
-          <p><b>Block Proposer 1 - 1024:</b> Validators that propose one of the first 1024 blocks and have to have an encoded ETH1 address on the graffiti field</p>
-          <p><b>Block Proposer 1 - 32768:</b> Validators that propose one of the the first 32768 blocks and have to have an encoded ETH1 address on the graffiti field.</p>
+          <p><b>Block Proposer 1 - 1024:</b> Validators that propose one of the first 1024 blocks and have to have an encoded BizNet address on the graffiti field</p>
+          <p><b>Block Proposer 1 - 32768:</b> Validators that propose one of the the first 32768 blocks and have to have an encoded BizNet address on the graffiti field.</p>
           <h2 class="h5">What is POAP?</h2>
           <p>The Proof of Attendance Protocol is a dapp that distributes badges in the form of ERC-721 tokens to prove you participated in an event. More info on the dapp and the multiclient token can be found <a href="https://app.poap.xyz/scan/poap.eth">here</a>.</p>
           <h2 class="h5">How will it work?</h2>
@@ -408,7 +408,7 @@
             <table style="width:fit-content" class="table" id="poap-table">
               <thead>
                 <tr>
-                  <th rowspan="2">ETH1 Address</th>
+                  <th rowspan="2">BizNet Address</th>
                   <th colspan="2">Total</th>
                   {{ range $i, $client := .PoapClients }}
                     <th colspan="2">{{ $client }}</th>

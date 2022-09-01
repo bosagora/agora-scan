@@ -293,7 +293,8 @@ func FormatEth1Address(addr []byte) template.HTML {
 	if Config.Chain.Config.ConfigName == "sepolia" {
 		return template.HTML(fmt.Sprintf("<a href=\"https://sepolia.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
 	}
-	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/account/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
+	eth1ExplorerAddr := Config.Frontend.Eth1Explorer
+	return template.HTML(fmt.Sprintf("<a href=\"%s/address/0x%x\" class=\"text-monospace\">%s…</a>%s", eth1ExplorerAddr, addr, eth1Addr.Hex()[:8], copyBtn))
 }
 
 // FormatEth1Block will return the eth1-block formated as html
@@ -307,7 +308,8 @@ func FormatEth1Block(block uint64) template.HTML {
 	if Config.Chain.Config.ConfigName == "sepolia" {
 		return template.HTML(fmt.Sprintf("<a href=\"https://sepolia.etherscan.io/block/%[1]d\">%[1]d</a>", block))
 	}
-	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/block/%[1]d\">%[1]d</a>", block))
+	eth1ExplorerAddr := Config.Frontend.Eth1Explorer
+	return template.HTML(fmt.Sprintf("<a href=\"%[2]s/block/%[1]d\">%[1]d</a>", block, eth1ExplorerAddr))
 }
 
 // FormatEth1BlockHash will return the eth1-block formated as html
@@ -322,7 +324,8 @@ func FormatEth1BlockHash(block []byte) template.HTML {
 	if Config.Chain.Config.ConfigName == "sepolia" {
 		return template.HTML(fmt.Sprintf("<a href=\"https://sepolia.etherscan.io/block/%#[1]x\">%#[1]x</a>%s", block, copyBtn))
 	}
-	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/block/%#[1]x\">%[1]x</a>%s", block, copyBtn))
+	eth1ExplorerAddr := Config.Frontend.Eth1Explorer
+	return template.HTML(fmt.Sprintf("<a href=\"%[2]s/block/%#[1]x\">%[1]x</a>%s", block, eth1ExplorerAddr, copyBtn))
 }
 
 // FormatEth1TxHash will return the eth1-tx-hash formated as html
@@ -335,7 +338,8 @@ func FormatEth1TxHash(hash []byte) template.HTML {
 	if Config.Chain.Config.ConfigName == "ropsten" {
 		return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="https://ropsten.etherscan.io/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
 	}
-	return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="https://etherchain.org/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
+	eth1ExplorerAddr := Config.Frontend.Eth1Explorer
+	return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="%s/tx/0x%x">0x%v…</a>%v`, eth1ExplorerAddr, hash, hex.EncodeToString(hash)[:6], copyBtn))
 }
 
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
@@ -695,7 +699,8 @@ func FormatValidatorWithName(validator interface{}, name string) template.HTML {
 func FormatEth1AddressWithName(address []byte, name string) template.HTML {
 	eth1Addr := eth1common.BytesToAddress(address)
 	if name != "" {
-		return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/account/0x%x\" class=\"text-monospace\">%s</a>", eth1Addr, name))
+		eth1ExplorerAddr := Config.Frontend.Eth1Explorer
+		return template.HTML(fmt.Sprintf("<a href=\"%s/address/0x%x\" class=\"text-monospace\">%s</a>", eth1ExplorerAddr, eth1Addr, name))
 	} else {
 		return FormatEth1Address(address)
 	}
