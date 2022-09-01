@@ -43,7 +43,7 @@ func fetchPrice() {
 	resp, err := client.Get("https://api.coingecko.com/api/v3/simple/price?ids=bosagora&vs_currencies=usd%2Ceur%2Crub%2Ccny%2Ccad%2Cjpy%2Cgbp%2Caud")
 
 	if err != nil {
-		logger.Errorf("error retrieving ETH price: %v", err)
+		logger.Errorf("error retrieving BOA price: %v", err)
 		return
 	}
 
@@ -53,7 +53,7 @@ func fetchPrice() {
 
 	err = json.NewDecoder(resp.Body).Decode(&ethPrice)
 	if err != nil {
-		logger.Errorf("error decoding ETH price json response to struct: %v", err)
+		logger.Errorf("error decoding BOA price json response to struct: %v", err)
 		return
 	}
 }
