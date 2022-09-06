@@ -189,9 +189,9 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			prevTotal = 0
 			logger.Warnf("can not get data for the previous epoch %v", err)
+		} else {
+			prevTotal = prevEpochData.TotalValidatorBalance
 		}
-
-		prevTotal = prevEpochData.TotalValidatorBalance
 	} else {
 		prevTotal = epochPageData.EligibleEther
 	}
