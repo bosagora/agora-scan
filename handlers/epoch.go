@@ -66,7 +66,8 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 			finalized,
 			eligibleether,
 			globalparticipationrate,
-			votedether
+			votedether,
+			totalvalidatorbalance
 		FROM epochs 
 		WHERE epoch = $1`, epoch)
 	if err != nil {
@@ -175,6 +176,27 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error retrieving previous epoch for epoch %v: %v", epochPageData.Epoch, err)
 		epochPageData.PreviousEpoch = 0
 	}
+
+	var prevTotal uint64 = 0
+	if epochPageData.Epoch > 0 {
+		prevEpochData := types.EpochPageData{}
+		err = db.ReaderDb.Get(&prevEpochData, `
+		SELECT 
+			totalvalidatorbalance
+		FROM epochs 
+		WHERE epoch = $1`, epochPageData.PreviousEpoch)
+
+		if err != nil {
+			prevTotal = 0
+			logger.Warnf("can not get data for the previous epoch %v", err)
+		}
+
+		prevTotal = prevEpochData.TotalValidatorBalance
+	} else {
+		prevTotal = epochPageData.EligibleEther
+	}
+
+	epochPageData.TotalRewards = epochPageData.TotalValidatorBalance - prevTotal
 
 	data.Data = epochPageData
 
