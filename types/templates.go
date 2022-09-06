@@ -758,6 +758,7 @@ type EpochPageData struct {
 	EligibleEther           uint64  `db:"eligibleether"`
 	GlobalParticipationRate float64 `db:"globalparticipationrate"`
 	VotedEther              uint64  `db:"votedether"`
+	TotalValidatorBalance   uint64  `db:"totalvalidatorbalance"`
 
 	Blocks []*IndexPageDataBlocks
 
@@ -769,6 +770,7 @@ type EpochPageData struct {
 	MissedCount           uint64
 	ScheduledCount        uint64
 	OrphanedCount         uint64
+	TotalRewards          uint64
 }
 
 // EpochPageMinMaxSlot is a struct for the min/max epoch data

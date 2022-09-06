@@ -224,6 +224,10 @@
             <div class="col-md-3">Avg. Validator Balance:</div>
             <div class="col-md-9">{{ formatBalance .AverageValidatorBalance $.Rates.Currency }}</div>
           </div>
+          <div class="row border-bottom p-3 mx-0">
+            <div class="col-md-3">Epoch Total Rewards:</div>
+            <div class="col-md-9">{{ formatBalance .TotalRewards $.Rates.Currency }}</div>
+          </div>
           <div class="row p-3 mx-0 collapsed">
             <div style="position:relative" class="col-md-3">Slots:</div>
             <div class="col-md-9">
