@@ -72,14 +72,13 @@
     class Calculator {
       constructor() {
         var self = this
-
         this.config = {}
 
         this.config.secondsPerSlot = 12
         this.config.slotsPerEpoch = 32
         this.config.secondsPerEpoch = this.config.secondsPerSlot * this.config.slotsPerEpoch
         this.config.epochsPerDay = (3600 * 24) / this.config.secondsPerEpoch
-        this.config.minNetworkStake = 40000e9 * 16387
+        this.config.minNetworkStake = 40000e9 * 1024 // 1024 is the min validator count, search for other places, it was 16387 for the ethereum
         this.config.minValidatorStake = 40000e9
         this.config.symbols = {
           USD: "$",
@@ -275,6 +274,7 @@
         this.params.networkStakePercent = this.config.minNetworkStake / this.config.totalEthSupply
         this.params.networkOnlineProbability = 0
         this.params.totalStakeMonthlyChange = 0
+        this.params.currentEpoch = 0
 
         this.result = {}
 
@@ -464,6 +464,7 @@
         p.totalStakeMonthlyChange = parseInt(document.getElementById("staking-variable-totalStakeMonthlyChange").value) / 100
 
         p.stake = parseFloat(document.getElementById("staking-variable-yourStake").value) * 1e9
+        p.currentEpoch = parseInt(document.getElementById("staking-variable-epoch"))
 
         p.initialCosts = parseFloat(document.getElementById("staking-variable-initialCosts").value)
         p.monthlyCosts = parseFloat(document.getElementById("staking-variable-monthlyCosts").value)
@@ -478,8 +479,13 @@
         } else {
           document.getElementById("staking-variable-yourStake-validation").style.display = "none"
         }
-        if (isNaN(p.networkStake) || p.networkStake < 40000 * 16387 * 1e9) {
-          p.networkStake = 40000 * 16387 * 1e9
+        if (isNaN(p.currentEpoch) || p.currentEpoch < 0) {
+          document.getElementById("staking-variable-epoch-validation").style.display = "initial"
+        } else {
+          document.getElementById("staking-variable-epoch-validation").style.display = "none"
+        }
+        if (isNaN(p.networkStake) || p.networkStake < 40000 * 1024 * 1e9) { // TODO: Min validator count = 1024
+          p.networkStake = 40000 * 1024 * 1e9
           document.getElementById("staking-variable-totalStake-validation").style.display = "initial"
         } else {
           document.getElementById("staking-variable-totalStake-validation").style.display = "none"
@@ -562,6 +568,8 @@
         this.result.breakEvenPoint = null
         this.result.numberOfPossibleValidators = Math.floor(this.params.stake / (40000 * 1e9)).toFixed(0) || "0"
 
+        const YearsOfSec = 365 * 24 * 60 * 60
+
         var price = this.params.price
         var costs = this.params.initialCosts //+ this.params.stake * price / 1e9
 
@@ -577,7 +585,20 @@
         var valStake = 40000e9
         var baseRewardFactor = 64
         var baseRewardsPerEpoch = 4
-        var baseReward = (valStake * baseRewardFactor) / (baseRewardsPerEpoch * Math.sqrt(totalStake))
+
+        var secondsSinceGenesis = +(this.config.secondsPerEpoch * this.params.currentEpoch)
+        var currentYear = secondsSinceGenesis / YearsOfSec
+        const firstYearValRewards = 27 * (YearsOfSec / 5)
+        var currentYearReward = firstYearValRewards
+
+        for (i = currentYear; i > 0; i--) {
+          currentYearReward = currentYearReward * 9369 / 10000
+        }
+
+        currentYearReward = currentYearReward * 1e9
+        var rewardPerSecond = currentYearReward / YearsOfSec
+        var rewardPerEpoch = rewardPerSecond * this.config.secondsPerEpoch
+        var baseReward = (valStake * rewardPerEpoch) / totalStake
 
         var now = Date.now()
         var yourStake = this.params.stake
@@ -597,7 +618,7 @@
           var churn = maxStakeGrowth * this.params.totalStakeMonthlyChange
           totalStake += churn
 
-          baseReward = (valStake * baseRewardFactor) / (baseRewardsPerEpoch * Math.sqrt(totalStake))
+          baseReward = (valStake) * (rewardPerEpoch / totalStake)
 
           var allVal = (totalStake / valStake) | 0
 
@@ -890,6 +911,14 @@
             </div>
             <div class="p-3 pt-0">
               <span id="staking-variable-yourStake-validation" class="input-validation">Your BOA stake must be greater than 0</span>
+            </div>
+            <h5 class="mb-0">Current Epoch <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="This value represents the current epoch for the network"></i></h5>
+            <div class="justify-content-between d-flex p-3 pb-0 align-content-center">
+              <input id="staking-variable-epoch" class="staking-variable form-control col-6" type="text" value="{{ .LatestEpoch }}" />
+              <h5 class="mb-0 mt-1" id="current-year col-6">Year <span id="current-year">1</span> <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="Year that network is in for reward calculation according to the current epoch"></i></h5>
+            </div>
+            <div class="p-3 pt-0">
+              <span id="staking-variable-epoch-validation" class="input-validation">Current epoch must be greater than or equal to 0</span>
             </div>
           </div>
           <div class="accordion" id="calculator-accordion">
