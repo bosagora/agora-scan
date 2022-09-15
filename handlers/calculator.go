@@ -22,7 +22,16 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	latestEpoch, err := db.GetLatestEpoch()
+	if err != nil {
+		logger.WithError(err).Error("error getting latest epoch")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+
 	calculatorPageData.TotalStaked = total
+	calculatorPageData.LatestEpoch = latestEpoch
+	logger.Infof("Latest epoch is %d", latestEpoch)
 
 	w.Header().Set("Content-Type", "text/html")
 
