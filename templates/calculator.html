@@ -587,12 +587,12 @@
         var baseRewardsPerEpoch = 4
 
         var secondsSinceGenesis = +(this.config.secondsPerEpoch * this.params.currentEpoch)
-        var currentYear = secondsSinceGenesis / YearsOfSec
-        const firstYearValRewards = 27 * (YearsOfSec / 5)
+        var currentYear = Math.floor(secondsSinceGenesis / YearsOfSec)
+        const firstYearValRewards = 7 * (YearsOfSec / 5)
         var currentYearReward = firstYearValRewards
 
         for (i = currentYear; i > 0; i--) {
-          currentYearReward = currentYearReward * 9369 / 10000
+          currentYearReward = currentYearReward * 98653 / 100000
         }
 
         currentYearReward = currentYearReward * 1e9
