@@ -32,4 +32,4 @@ jobs:
       with:
         # Either 'success' or 'skipped'
         push: ${{ steps.login.outcome == 'success' }}
-        tags: bosagora/eth2-beaconchain-explorer:agora
+        tags: bosagora/agora-scan:agora
