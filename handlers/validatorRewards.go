@@ -33,12 +33,12 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "services", "/rewards", "Ethereum Validator Rewards")
+	data := InitPageData(w, r, "services", "/rewards", "Agora Validator Rewards")
 
 	var supportedCurrencies []string
 	err = db.ReaderDb.Select(&supportedCurrencies,
-		`select column_name 
-			from information_schema.columns 
+		`select column_name
+			from information_schema.columns
 			where table_name = 'price'`)
 	if err != nil {
 		logger.Errorf("error getting eth1-deposits-distribution for stake pools: %w", err)
@@ -89,8 +89,8 @@ func getUserRewardSubscriptions(uid uint64) [][]string {
 func isValidCurrency(currency string) bool {
 	var count uint64
 	err := db.ReaderDb.Get(&count,
-		`select count(column_name) 
-		from information_schema.columns 
+		`select count(column_name)
+		from information_schema.columns
 		where table_name = 'price' AND column_name=$1;`, currency)
 	if err != nil {
 		logger.Errorf("error checking currency: %w", err)
@@ -200,8 +200,8 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 
 	var count uint64
 	err := db.FrontendWriterDB.Get(&count,
-		`select count(event_name) 
-		from users_subscriptions 
+		`select count(event_name)
+		from users_subscriptions
 		where user_id=$1 AND event_name=$2;`, user.UserID, strings.ToLower(utils.GetNetwork())+":"+string(types.TaxReportEventName))
 
 	if err != nil || count >= 5 {
@@ -305,8 +305,8 @@ func RewardGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
 
 	var count uint64
 	err := db.FrontendWriterDB.Get(&count,
-		`select count(event_name) 
-		from users_subscriptions 
+		`select count(event_name)
+		from users_subscriptions
 		where user_id=$1 AND event_name=$2;`, user.UserID, strings.ToLower(utils.GetNetwork())+":"+string(types.TaxReportEventName))
 
 	if err != nil {
