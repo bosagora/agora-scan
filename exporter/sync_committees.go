@@ -36,7 +36,7 @@ func exportSyncCommittees(rpcClient rpc.Client) error {
 	currEpoch := utils.TimeToEpoch(time.Now())
 	lastPeriod := utils.SyncPeriodOfEpoch(uint64(currEpoch)) + 1 // we can look into the future
 	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.Config.AltairForkEpoch)
-	for p := firstPeriod; p <= lastPeriod; p++ {
+	for p := firstPeriod; p <= lastPeriod && p > 0; p++ {
 		_, exists := dbPeriodsMap[p]
 		if !exists {
 			t0 := time.Now()
@@ -112,7 +112,7 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 	}
 	_, err = tx.Exec(
 		fmt.Sprintf(`
-			INSERT INTO sync_committees (period, validatorindex, committeeindex) 
+			INSERT INTO sync_committees (period, validatorindex, committeeindex)
 			VALUES %s ON CONFLICT (period, validatorindex, committeeindex) DO NOTHING`,
 			strings.Join(valueIds, ",")),
 		valueArgs...)
