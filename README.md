@@ -1,24 +1,13 @@
 # Agorascan - Agora consensus layer explorer
 
-The explorer provides a comprehensive and easy to use interface for the upcoming Eth2 beacon chain. It makes it easy to view proposed blocks, follow attestations and monitor your staking activity.
-
-[![Badge](https://github.com/gobitfly/eth2-beaconchain-explorer/workflows/Build/badge.svg)](https://github.com/gobitfly/eth2-beaconchain-explorer/actions?query=workflow%3A%22Build+%26+Publish+Docker+images%22)
-[![Gitter](https://img.shields.io/gitter/room/gobitfly/eth2-beaconchain-explorer?color=%2334D058)](https://gitter.im/gobitfly/beaconchain-explorer?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
-[![Go Report Card](https://goreportcard.com/badge/github.com/gobitfly/eth2-beaconchain-explorer)](https://goreportcard.com/report/github.com/gobitfly/eth2-beaconchain-explorer)
-[![GitPOAP Badge](https://public-api.gitpoap.io/v1/repo/gobitfly/eth2-beaconchain-explorer/badge)](https://www.gitpoap.io/gh/gobitfly/eth2-beaconchain-explorer)
+The explorer provides a comprehensive and easy to use interface for the Agora consensus layer chain. It makes it easy to view proposed blocks, follow attestations and monitor your staking activity.
 
 ## About
 
-The explorer is built using golang and utilizes a PostgreSQL database for storing and indexing data. In order to avoid the situation we currently have with the Eth1 chain where closed source block explorers dominate the market we decided to make our explorer open source and available for everybody.
+The explorer is forked from the Open Source eth2-explorer at https://github.com/gobitfly/eth2-beaconchain-explorer
 
-### Eth 2.0 Testnet Explorers
-
-Prysm [beaconcha.in](https://beaconcha.in)<br>
-Lighthouse [lighthouse.beaconcha.in](https://lighthouse.beaconcha.in)
-
-**Warning:** The explorer is still under heavy active development. More or less everything might change without prior notice and we cannot guarantee any backwards compatibility for now. Once the eth2 ecosystem matures we will be able to provide stronger guarantees about the updatability of the explorer.
-
-![Site](https://user-images.githubusercontent.com/26490734/120495328-e351f800-c3bc-11eb-92a8-e93fbde24539.png 'Beacon Chain Web Interface Screenshot')
+### Agorascan Testnet Explorer
+Testnet: https://testnet.agorascan.io
 
 ## Features
 
@@ -55,9 +44,10 @@ Lighthouse [lighthouse.beaconcha.in](https://lighthouse.beaconcha.in)
 
 ## Getting started
 
-We currently do not provide any pre-built binaries of the explorer. Docker images are available at https://hub.docker.com/repository/docker/gobitfly/eth2-beaconchain-explorer.
+We currently do not provide any pre-built binaries of the explorer.
+Docker images are available from `Dockerhub.com` by pulling `bosagora/agora-scan:agora`
 
-- Download the latest version of the Prysm beacon chain client and start it with the `--archive` flag set
+- Download the latest version of the Agora-cl client and start it with the `--archive` flag set
 - Wait till the client finishes the initial sync
 - Setup a PostgreSQL DB and import the `tables.sql` file from the root of this repository
 - Install go version 1.13 or higher
@@ -68,11 +58,11 @@ We currently do not provide any pre-built binaries of the explorer. Docker image
 
 ## Developing locally with docker
 - Clone the repository
-- Run `docker-compose up` to start instances of the following containers `eth1`, `prysm`, `postgres` and `golang`.
+- Run `docker-compose up` to start instances of the following containers `agora-el`, `agora-cl`, `postgres` and `golang`.
 - Open a new terminal in project directory and run `docker run -it --rm --net=host -v $(pwd):/src  postgres psql -f /src/tables.sql -d db -h 0.0.0.0 -U postgres` to create new tables in the database
-- Wait for the client to finish initial sync, you can check this by looking at logs of `prysm` instance.
+- Wait for the client to finish initial sync, you can check this by looking at logs of `agora-cl` instance.
 - Copy the `config-example.yml` file and adapt it to your environment.\
- In your `.yml` file specify `eth1Endpoint` as `'./private/eth1_node/.ethereum/goerli/geth.ipc'`.
+ In your `.yml` file specify `eth1Endpoint` as `geth.ipc`.
  For database information check `postgres` section in `docker-compose.yml` file.
 - Connect to `golang` instance by running `docker exec -ti golang bash` and run `make all`
 - Start the explorer binary and pass the path to the config file as argument
