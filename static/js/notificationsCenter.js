@@ -936,7 +936,7 @@ $(function () {
       $("#add-monitoring-validator-select").replaceWith(`
       <span>
         No machine found. Learn more about monitoring your validator and beacon node
-        <a href="https://kb.www.agorascan.io/www.agorascan.io-explorer/mobile-app-less-than-greater-than-beacon-node">here</a>.
+        <a href="https://kb.agorascan.io/www.agorascan.io-explorer/mobile-app-less-than-greater-than-beacon-node">here</a>.
       </span>`)
     } else {
       $("#add-monitoring-validator-select").html("")
