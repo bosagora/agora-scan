@@ -83,7 +83,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
+		data.Meta.Title = fmt.Sprintf("%v - Slot %v - www.agorascan.io - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
 		data.Meta.Path = "/block/" + slotOrHash
 		logger.Errorf("error retrieving block data: %v", err)
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
@@ -136,7 +136,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		    exec_block_hash,
 			exec_transactions_count,
 			COALESCE(validator_names.name, '') AS name
-		FROM blocks 
+		FROM blocks
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		WHERE blocks.slot = $1 ORDER BY blocks.status LIMIT 1`,
@@ -145,7 +145,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	blockPageData.Slot = uint64(blockSlot)
 	if err != nil {
 		//Slot not in database -> Show future block
-		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
+		data.Meta.Title = fmt.Sprintf("%v - Slot %v - www.agorascan.io - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
 		data.Meta.Path = "/block/" + slotOrHash
 
 		if blockPageData.Slot > MaxSlotValue {
@@ -179,7 +179,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, blockPageData.Slot, time.Now().Year())
+	data.Meta.Title = fmt.Sprintf("%v - Slot %v - www.agorascan.io - %v", utils.Config.Frontend.SiteName, blockPageData.Slot, time.Now().Year())
 	data.Meta.Path = fmt.Sprintf("/block/%v", blockPageData.Slot)
 
 	blockPageData.Ts = utils.SlotToTime(blockPageData.Slot)
@@ -482,7 +482,7 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 	var count uint64
 
 	err = db.ReaderDb.Get(&count, `
-	SELECT 
+	SELECT
 		count(*)
 	FROM
 		blocks_deposits

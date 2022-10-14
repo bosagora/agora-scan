@@ -792,9 +792,9 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 				retries,
 				event_names,
 				destination
-			FROM 
+			FROM
 				users_webhooks
-			WHERE 
+			WHERE
 				user_id = $1 AND user_id NOT IN (SELECT user_id from users_notification_channels WHERE active = false and channel = $2)
 		`, userID, types.WebhookNotificationChannel)
 		// continue if the user does not have a webhook
@@ -1298,18 +1298,18 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 		var partial []dbResult
 
 		err = db.WriterDb.Select(&partial, `
-				SELECT 
-					v.validatorindex, 
+				SELECT
+					v.validatorindex,
 					pa.epoch,
 					pa.status,
 					v.pubkey as pubkey
-				FROM 
-				(SELECT 
-					v.validatorindex as validatorindex, 
+				FROM
+				(SELECT
+					v.validatorindex as validatorindex,
 					v.pubkey as pubkey
 				FROM validators v
 				WHERE pubkey = ANY($3)) v
-				INNER JOIN proposal_assignments pa ON v.validatorindex = pa.validatorindex AND pa.epoch >= ($1 - 5) 
+				INNER JOIN proposal_assignments pa ON v.validatorindex = pa.validatorindex AND pa.epoch >= ($1 - 5)
 				WHERE pa.status = $2 AND pa.epoch >= ($1 - 5)`, latestEpoch, status, pq.ByteaArray(keys))
 		if err != nil {
 			return err
@@ -1469,7 +1469,7 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 
 		var partial []dbResult
 		err = db.WriterDb.Select(&partial, `
-		SELECT 
+		SELECT
 			v.validatorindex,
 			v.pubkey,
 			aa.epoch,
@@ -1477,8 +1477,8 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 			aa.attesterslot,
 			aa.inclusionslot
 		FROM
-		(SELECT 
-				v.validatorindex as validatorindex, 
+		(SELECT
+				v.validatorindex as validatorindex,
 				v.pubkey as pubkey
 			FROM validators v
 			WHERE pubkey = ANY($4)) v
@@ -1805,7 +1805,7 @@ func (n *ethClientNotification) GetInfo(includeUrl bool) string {
 		case "Rocketpool":
 			url = "https://github.com/rocket-pool/smartnode-install/releases"
 		default:
-			url = "https://beaconcha.in/ethClients"
+			url = "https://www.agorascan.io/ethClients"
 		}
 
 		return generalPart + " " + url
@@ -1843,7 +1843,7 @@ func (n *ethClientNotification) GetInfoMarkdown() string {
 	case "Rocketpool":
 		url = "https://github.com/rocket-pool/smartnode-install/releases"
 	default:
-		url = "https://beaconcha.in/ethClients"
+		url = "https://www.agorascan.io/ethClients"
 	}
 
 	generalPart := fmt.Sprintf(`A new version for [%s](%s) is available.`, n.EthClient, url)
@@ -1865,11 +1865,11 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 		err := db.FrontendWriterDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
 			FROM users_subscriptions AS us
-			WHERE 
-				us.event_name=$1 
-			AND 
-				us.event_filter=$2 
-			AND 
+			WHERE
+				us.event_name=$1
+			AND
+				us.event_filter=$2
+			AND
 				((us.last_sent_ts <= NOW() - INTERVAL '2 DAY' AND TO_TIMESTAMP($3) > us.last_sent_ts) OR us.last_sent_ts IS NULL)
 			`,
 			eventName, strings.ToLower(client.Name), client.Date.Unix()) // was last notification sent 2 days ago for this client
@@ -1903,19 +1903,19 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineOfflineEventName,
 		`
-	SELECT 
+	SELECT
 		us.user_id,
 		max(us.id) as id,
 		ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') as unsubscribe_hash,
 		machine
 	FROM users_subscriptions us
 	JOIN (
-		SELECT max(id) as id, user_id, machine, max(created_trunc) as created_trunc from stats_meta_p 
-		WHERE day >= $3 
+		SELECT max(id) as id, user_id, machine, max(created_trunc) as created_trunc from stats_meta_p
+		WHERE day >= $3
 		group by user_id, machine
-	) v on v.user_id = us.user_id 
-	WHERE us.event_name = $1 AND us.created_epoch <= $2 
-	AND us.event_filter = v.machine 
+	) v on v.user_id = us.user_id
+	WHERE us.event_name = $1 AND us.created_epoch <= $2
+	AND us.event_filter = v.machine
 	AND (us.last_sent_epoch < ($2 - 120) OR us.last_sent_epoch IS NULL)
 	AND v.created_trunc < now() - interval '4 minutes' AND v.created_trunc > now() - interval '1 hours'
 	group by us.user_id, machine
@@ -1924,84 +1924,84 @@ func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.
 
 func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineDiskAlmostFullEventName,
-		`SELECT 
+		`SELECT
 			us.user_id,
 			max(us.id) as id,
 			ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') as unsubscribe_hash,
 			machine
-		FROM users_subscriptions us 
+		FROM users_subscriptions us
 		INNER JOIN stats_meta_p v ON us.user_id = v.user_id
 		INNER JOIN stats_system sy ON v.id = sy.meta_id
-		WHERE us.event_name = $1 AND us.created_epoch <= $2 
-		AND v.day >= $3 
-		AND v.machine = us.event_filter 
+		WHERE us.event_name = $1 AND us.created_epoch <= $2
+		AND v.day >= $3
+		AND v.machine = us.event_filter
 		AND (us.last_sent_epoch < ($2 - 750) OR us.last_sent_epoch IS NULL)
 		AND sy.disk_node_bytes_free::decimal / sy.disk_node_bytes_total < event_threshold
-		AND v.created_trunc > NOW() - INTERVAL '1 hours' 
+		AND v.created_trunc > NOW() - INTERVAL '1 hours'
 		group by us.user_id, machine
 	`)
 }
 
 func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineCpuLoadEventName,
-		`SELECT 
+		`SELECT
 			max(us.id) as id,
 			us.user_id,
 			ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') as unsubscribe_hash,
-			machine 
-		FROM users_subscriptions us 
+			machine
+		FROM users_subscriptions us
 		INNER JOIN (
 			SELECT max(id) as id, user_id, machine, max(created_trunc) as created_trunc from stats_meta_p
-			where process = 'system' AND day >= $3 
+			where process = 'system' AND day >= $3
 			group by user_id, machine
-		) v ON us.user_id = v.user_id 
-		WHERE v.machine = us.event_filter 
-		AND us.event_name = $1 AND us.created_epoch <= $2 
+		) v ON us.user_id = v.user_id
+		WHERE v.machine = us.event_filter
+		AND us.event_name = $1 AND us.created_epoch <= $2
 		AND (us.last_sent_epoch < ($2 - 10) OR us.last_sent_epoch IS NULL)
-		AND v.created_trunc > now() - interval '45 minutes' 
-		AND event_threshold < (SELECT 
-			1 - (cpu_node_idle_seconds_total::decimal - lag(cpu_node_idle_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) / (cpu_node_system_seconds_total::decimal - lag(cpu_node_system_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) as cpu_load 
-			FROM stats_system as sy 
-			INNER JOIN stats_meta_p m on meta_id = m.id 
-			WHERE m.id = meta_id 
-			AND m.day >= $3 
-			AND m.user_id = v.user_id 
-			AND m.machine = us.event_filter 
+		AND v.created_trunc > now() - interval '45 minutes'
+		AND event_threshold < (SELECT
+			1 - (cpu_node_idle_seconds_total::decimal - lag(cpu_node_idle_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) / (cpu_node_system_seconds_total::decimal - lag(cpu_node_system_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) as cpu_load
+			FROM stats_system as sy
+			INNER JOIN stats_meta_p m on meta_id = m.id
+			WHERE m.id = meta_id
+			AND m.day >= $3
+			AND m.user_id = v.user_id
+			AND m.machine = us.event_filter
 			ORDER BY sy.id desc
 			LIMIT 1
-		) 
+		)
 		group by us.user_id, machine;
 	`)
 }
 
 func collectMonitoringMachineMemoryUsage(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineMemoryUsageEventName,
-		`SELECT 
+		`SELECT
 			max(us.id) as id,
 			us.user_id,
 			ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') as unsubscribe_hash,
-			machine 
-		FROM users_subscriptions us 
+			machine
+		FROM users_subscriptions us
 		INNER JOIN (
 			SELECT max(id) as id, user_id, machine, max(created_trunc) as created_trunc from stats_meta_p
-			where process = 'system' AND day >= $3 
+			where process = 'system' AND day >= $3
 			group by user_id, machine
-		) v ON us.user_id = v.user_id 
-		WHERE v.machine = us.event_filter 
+		) v ON us.user_id = v.user_id
+		WHERE v.machine = us.event_filter
 		AND us.event_name = $1 AND us.created_epoch <= $2
 		AND (us.last_sent_epoch < ($2 - 10) OR us.last_sent_epoch IS NULL)
-		AND v.created_trunc > now() - interval '1 hours' 
-		AND event_threshold < (SELECT avg(usage) FROM (SELECT 
+		AND v.created_trunc > now() - interval '1 hours'
+		AND event_threshold < (SELECT avg(usage) FROM (SELECT
 		1 - ((memory_node_bytes_free + memory_node_bytes_cached + memory_node_bytes_buffers) / memory_node_bytes_total::decimal) as usage
-		FROM stats_system as sy 
-		INNER JOIN stats_meta_p m on meta_id = m.id 
-		WHERE m.id = meta_id 
-		AND m.day >= $3 
-		AND m.user_id = v.user_id 
-		AND m.machine = us.event_filter 
+		FROM stats_system as sy
+		INNER JOIN stats_meta_p m on meta_id = m.id
+		WHERE m.id = meta_id
+		AND m.day >= $3
+		AND m.user_id = v.user_id
+		AND m.machine = us.event_filter
 		ORDER BY sy.id desc
 		LIMIT 5
-		) p) 
+		) p)
 		group by us.user_id, machine;
 	`)
 }
@@ -2584,7 +2584,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 		var partial []dbResult
 
 		err = db.WriterDb.Select(&partial, `
-		SELECT address, rpl_stake, min_rpl_stake, max_rpl_stake                    
+		SELECT address, rpl_stake, min_rpl_stake, max_rpl_stake
 		FROM rocketpool_nodes WHERE address = ANY($1)`, pq.ByteaArray(keys))
 		if err != nil {
 			return err
@@ -2729,7 +2729,7 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 
 	err = db.FrontendWriterDB.Select(&dbResult, `
 				SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
-				FROM users_subscriptions AS us 
+				FROM users_subscriptions AS us
 				WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '26 hours' OR us.last_sent_ts IS NULL) AND event_filter = ANY($2);
 				`,
 		utils.GetNetwork()+":"+string(eventName), pq.StringArray(pubKeys),
