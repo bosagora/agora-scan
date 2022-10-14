@@ -5,7 +5,7 @@
   <div class="validator__lifecycle-container">
     <div class="validator__lifecycle-content">
       <div id="lifecycle-deposited" class="validator__lifecycle-node-container validator__lifecycle-deposited">
-        <div class="validator__lifecycle-node-header"><a class="no-highlight" href="https://kb.www.agorascan.io/ethereum-2.0-depositing#2-deposit-contract-status-deposited">Deposited</a></div>
+        <div class="validator__lifecycle-node-header"><a class="no-highlight" href="https://kb.agorascan.io/ethereum-2.0-depositing#2-deposit-contract-status-deposited">Deposited</a></div>
         <div class="validator__lifecycle-node" data-toggle="tooltip" title="This will turn green when your deposit has been processed by the beacon chain">
           <i class="fas fa-check deposit-success"></i>
           <i class="fas fa-times fail deposit-fail"></i>
@@ -22,7 +22,7 @@
       </div>
       <div id="lifecycle-pending" class="validator__lifecycle-node-container validator__lifecycle-pending">
         <div class="validator__lifecycle-node-container">
-          <div class="validator__lifecycle-node-header"><a class="no-highlight" href="https://kb.www.agorascan.io/ethereum-2.0-depositing#3-validator-queue-status-pending">Pending</a></div>
+          <div class="validator__lifecycle-node-header"><a class="no-highlight" href="https://kb.agorascan.io/ethereum-2.0-depositing#3-validator-queue-status-pending">Pending</a></div>
           <div class="validator__lifecycle-node" data-toggle="tooltip" title="After being proccessed your validator joins a queue to be activated">
             <i class="fas fa-hourglass-half pending-waiting"></i>
             <i class="fas fa-check"></i>
@@ -40,7 +40,7 @@
       </div>
       <div id="lifecycle-active" class="validator__lifecycle-node-container validator__lifecycle-active">
         <div class="validator__lifecycle-node-container">
-          <div class="validator__lifecycle-node-header"><a class="no-highlight" href="https://kb.www.agorascan.io/ethereum-2.0-depositing#4-staking-status-active">Active</a></div>
+          <div class="validator__lifecycle-node-header"><a class="no-highlight" href="https://kb.agorascan.io/ethereum-2.0-depositing#4-staking-status-active">Active</a></div>
           <div class="validator__lifecycle-node" data-toggle="tooltip" title="Once your validator reaches this state it can participate in attesting and proposing. Make sure it stays online!">
             <i class="fas fa-power-off online"></i>
             <i class="fas fa-power-off offline"></i>
@@ -59,7 +59,7 @@
       </div>
       <div id="lifecycle-exited" class="validator__lifecycle-node-container validator__lifecycle-exited">
         <div class="validator__lifecycle-node-container">
-          <div class="validator__lifecycle-node-header"><a class="no-highlight" href="https://kb.www.agorascan.io/ethereum-2.0-depositing#4-staking-status-active">Exited</a></div>
+          <div class="validator__lifecycle-node-header"><a class="no-highlight" href="https://kb.agorascan.io/ethereum-2.0-depositing#4-staking-status-active">Exited</a></div>
           <div class="validator__lifecycle-node" data-toggle="tooltip" title="If your validator misbehaves or chooses to leave the network it will join a queue to leave.">
             <i class="fas fa-door-open"></i>
             <div class="spinner">
@@ -82,9 +82,9 @@
             {{ if eq .InclusionDelay 0 }}
               A BOA deposit has been made, and your validator will be voted into the activation queue once the deposited amount sums up to 40,000 BOA.
             {{ else }}
-              <!-- The last ETH1 deposit was made  {{ if gt .Deposits.LastEth1DepositTs 0 }}<span aria-ethereum-date-format="FROMNOW" aria-ethereum-date="{{ .Deposits.LastEth1DepositTs }}"></span>{{ end }}, it will take <a href="https://kb.www.agorascan.io/ethereum-2.0-and-depositing-process">around {{ .InclusionDelay }} hours</a>  until your deposit is processed by the beacon chain. This validator will be eligible for activation once the deposited amount sums up to 32 ETH.
+              <!-- The last ETH1 deposit was made  {{ if gt .Deposits.LastEth1DepositTs 0 }}<span aria-ethereum-date-format="FROMNOW" aria-ethereum-date="{{ .Deposits.LastEth1DepositTs }}"></span>{{ end }}, it will take <a href="https://kb.agorascan.io/ethereum-2.0-and-depositing-process">around {{ .InclusionDelay }} hours</a>  until your deposit is processed by the beacon chain. This validator will be eligible for activation once the deposited amount sums up to 32 ETH.
                             -->
-              The last BOA deposit was made {{ if gt .Deposits.LastEth1DepositTs 0 }}<span aria-ethereum-date-format="FROMNOW" aria-ethereum-date="{{ .Deposits.LastEth1DepositTs }}"></span>{{ end }}, it will take <a href="https://kb.www.agorascan.io/ethereum-2.0-and-depositing-process">around 16-24 hours</a> until your deposit is processed by the beacon chain. This validator will be eligible for activation once the deposited amount sums up to 40,000 BOA.
+              The last BOA deposit was made {{ if gt .Deposits.LastEth1DepositTs 0 }}<span aria-ethereum-date-format="FROMNOW" aria-ethereum-date="{{ .Deposits.LastEth1DepositTs }}"></span>{{ end }}, it will take <a href="https://kb.agorascan.io/ethereum-2.0-and-depositing-process">around 16-24 hours</a> until your deposit is processed by the beacon chain. This validator will be eligible for activation once the deposited amount sums up to 40,000 BOA.
             {{ end }}
             <!-- {{ if and .PendingCount (and (gt .EstimatedActivationTs 0) (lt .EstimatedActivationTs 9223372036854775807)) }}This validator will be activated approximately <span class="font-weight-bolder">{{ .EstimatedActivationTs | formatTsWithoutTooltip }}</span> after being registered by the beacon chain.{{ end }}
                         -->
@@ -108,7 +108,7 @@
           {{ if ne .ActivationEpoch 9223372036854775807 }}
             This validator has been processed by the beacon chain and is currently waiting to be activated. It will approximately be activated on <span class="font-weight-bolder" title="{{ .ActivationTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .ActivationTs.Unix }}">{{ .ActivationTs }}</span> during epoch <span class="font-weight-bolder">{{ .ActivationEpoch }}</span>. Make sure your nodes and your client is up and running <em>before</em> the countdown reaches zero.
           {{ else }}
-            This validator has been registered by the beacon chain and is currently waiting to be voted into the activation queue. You can read more about this process in the <a href="https://kb.www.agorascan.io/ethereum-2.0-depositing">Ethereum 2.0 Knowledge Base</a>.
+            This validator has been registered by the beacon chain and is currently waiting to be voted into the activation queue. You can read more about this process in the <a href="https://kb.agorascan.io/ethereum-2.0-depositing">Ethereum 2.0 Knowledge Base</a>.
           {{ end }}
         </div>
         {{ if lt .ActivationEpoch 9223372036854775807 }}
@@ -144,7 +144,7 @@
           <span style="font-size: 0.8rem; color: gray"
             >{{ formatEffectiveBalance .EffectiveBalance "BOA" }}
             <span data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator"
-              ><a class="no-highlight" href="https://kb.www.agorascan.io/glossary#current-balance-and-effective-balance"><i class="far ml-1 fa-question-circle"></i></a></span
+              ><a class="no-highlight" href="https://kb.agorascan.io/glossary#current-balance-and-effective-balance"><i class="far ml-1 fa-question-circle"></i></a></span
           ></span>
         </div>
       </div>
@@ -179,7 +179,7 @@
           <span
             >{{ formatEffectiveBalance .EffectiveBalance "BOA" }}
             <span style="font-size:0.8rem; color:gray" data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator"
-              ><a class="no-highlight" href="https://kb.www.agorascan.io/glossary#current-balance-and-effective-balance"><i class="far ml-1 fa-question-circle"></i></a></span
+              ><a class="no-highlight" href="https://kb.agorascan.io/glossary#current-balance-and-effective-balance"><i class="far ml-1 fa-question-circle"></i></a></span
           ></span>
         </div>
       </div>
