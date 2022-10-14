@@ -29,20 +29,20 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// @title Beaconcha.in ETH2 API
+// @title www.agorascan.io ETH2 API
 // @version 1.0
 // @description High performance API for querying information about the Ethereum 2.0 beacon chain
 // @description The API is currently free to use. A fair use policy applies. Calls are rate limited to
 // @description 10 requests / 1 minute / IP. All API results are cached for 1 minute.
-// @description If you required a higher usage plan please checkout https://beaconcha.in/pricing.
+// @description If you required a higher usage plan please checkout https://www.agorascan.io/pricing.
 // @description The API key can be provided in the Header or as a query string parameter.
 // @description
-// @description Key as a query string parameter: `curl https://beaconcha.in/api/v1/block/1?apikey=<your_key>`
+// @description Key as a query string parameter: `curl https://www.agorascan.io/api/v1/block/1?apikey=<your_key>`
 // @description
-// @description Key in a request header:  `curl -H 'apikey: <your_key>' https://beaconcha.in/api/v1/block/1`
+// @description Key in a request header:  `curl -H 'apikey: <your_key>' https://www.agorascan.io/api/v1/block/1`
 // @securitydefinitions.oauth2.accessCode OAuthAccessCode
-// @tokenurl https://beaconcha.in/user/token
-// @authorizationurl https://beaconcha.in/user/authorize
+// @tokenurl https://www.agorascan.io/user/token
+// @authorizationurl https://www.agorascan.io/user/authorize
 // @securitydefinitions.apikey ApiKeyAuth
 // @in header
 // @name Authorization
@@ -145,7 +145,7 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.ReaderDb.Query(`
 		SELECT day, effective_balances_sum, start_balances_sum, end_balances_sum, deposits_sum
-		FROM eth_store_stats 
+		FROM eth_store_stats
 		WHERE day = $1`, day)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
@@ -181,7 +181,7 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 		epoch = int64(services.LatestEpoch())
 	}
 
-	rows, err := db.ReaderDb.Query(`SELECT *, 
+	rows, err := db.ReaderDb.Query(`SELECT *,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '0') as scheduledblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '1') as proposedblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '2') as missedblocks,
@@ -690,11 +690,11 @@ func getRocketpoolStats() ([]interface{}, error) {
 		}
 	}
 	rows, err := db.ReaderDb.Query(`
-		SELECT claim_interval_time, claim_interval_time_start, 
+		SELECT claim_interval_time, claim_interval_time_start,
 		current_node_demand, TRUNC(current_node_fee::decimal, 10)::float as current_node_fee, effective_rpl_staked,
-		node_operator_rewards, TRUNC(reth_exchange_rate::decimal, 10)::float as reth_exchange_rate, reth_supply, rpl_price, total_eth_balance, total_eth_staking, 
-		minipool_count, node_count, odao_member_count, 
-		(SELECT TRUNC(((1 - (min(history.reth_exchange_rate) / max(history.reth_exchange_rate))) * 52.14)::decimal , 10) FROM (SELECT ts, reth_exchange_rate FROM rocketpool_network_stats LIMIT 168) history)::float as reth_apr  
+		node_operator_rewards, TRUNC(reth_exchange_rate::decimal, 10)::float as reth_exchange_rate, reth_supply, rpl_price, total_eth_balance, total_eth_staking,
+		minipool_count, node_count, odao_member_count,
+		(SELECT TRUNC(((1 - (min(history.reth_exchange_rate) / max(history.reth_exchange_rate))) * 52.14)::decimal , 10) FROM (SELECT ts, reth_exchange_rate FROM rocketpool_network_stats LIMIT 168) history)::float as reth_apr
 		from rocketpool_network_stats ORDER BY ts desc LIMIT 1;
 			`)
 
@@ -729,9 +729,9 @@ func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 			rpln.max_rpl_stake     AS node_max_rpl_stake,
 			rpln.min_rpl_stake     AS node_min_rpl_stake,
 			rpln.rpl_cumulative_rewards     AS rpl_cumulative_rewards,
-			validators.validatorindex AS index 
-		FROM rocketpool_minipools rplm 
-		LEFT JOIN validators validators ON rplm.pubkey = validators.pubkey 
+			validators.validatorindex AS index
+		FROM rocketpool_minipools rplm
+		LEFT JOIN validators validators ON rplm.pubkey = validators.pubkey
 		LEFT JOIN rocketpool_nodes rpln ON rplm.node_address = rpln.address
 		WHERE validatorindex = ANY($1)`, pq.Array(queryIndices))
 
@@ -1074,9 +1074,9 @@ func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
 	j := json.NewEncoder(w)
 
 	rows, err := db.ReaderDb.Query(`
-			SELECT 
+			SELECT
 				validator_performance.*
-			FROM validator_performance 
+			FROM validator_performance
 			ORDER BY performance7d DESC LIMIT 100`)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
@@ -1203,7 +1203,7 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiChart godoc
-// @Summary Returns charts from the page https://beaconcha.in/charts as PNG
+// @Summary Returns charts from the page https://www.agorascan.io/charts as PNG
 // @Tags Charts
 // @Produce  json
 // @Param  chart path string true "Chart name (see https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/services/charts_updater.go#L20 for all available names)"
@@ -1650,19 +1650,19 @@ func GetMobileWidgetStats(j *json.Encoder, r *http.Request, indexOrPubkey string
 
 	g.Go(func() error {
 		validatorRows, err = db.ReaderDb.Query(
-			`SELECT 
-					validators.pubkey, 
-					effectivebalance, 
-					slashed, 
-					activationeligibilityepoch, 
-					activationepoch, 
-					exitepoch, 
-					lastattestationslot, 
-					validators.status, 
+			`SELECT
+					validators.pubkey,
+					effectivebalance,
+					slashed,
+					activationeligibilityepoch,
+					activationepoch,
+					exitepoch,
+					lastattestationslot,
+					validators.status,
 					validator_performance.*,
-					TRUNC(rplm.node_fee::decimal, 10)::float  AS minipool_node_fee  
-				FROM validators 
-				LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex 
+					TRUNC(rplm.node_fee::decimal, 10)::float  AS minipool_node_fee
+				FROM validators
+				LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
 				LEFT JOIN rocketpool_minipools rplm ON rplm.pubkey = validators.pubkey
 				WHERE validator_performance.validatorindex = ANY($1) OR validators.pubkey = ANY($2) ORDER BY validator_performance.validatorindex`,
 			pq.Array(queryIndices), queryPubkeys,
@@ -1932,10 +1932,10 @@ func ClientStatsPostNew(w http.ResponseWriter, r *http.Request) {
 }
 
 // ClientStatsPost godoc
-// @Summary Used in eth2 clients to submit stats to your beaconcha.in account. This data can be accessed by the app or the user stats api call.
+// @Summary Used in eth2 clients to submit stats to your www.agorascan.io account. This data can be accessed by the app or the user stats api call.
 // @Tags User
 // @Produce json
-// @Param apiKey query string true "User API key, can be found on https://beaconcha.in/user/settings"
+// @Param apiKey query string true "User API key, can be found on https://www.agorascan.io/user/settings"
 // @Param machine query string false "Name your device if you have multiple devices you want to monitor"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse

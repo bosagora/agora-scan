@@ -16,19 +16,19 @@
     var clientRefs = [
         {
             id: 'prysm-graffiti',
-            config: "./{exporter-arch} --server.address='https://beaconcha.in/api/v1/client/metrics?apikey={apiKey}{machineName}' --beaconnode.type=prysm --beaconnode.address=http://localhost:8080/metrics --validator.type=prysm --validator.address=http://localhost:8081/metrics "
+            config: "./{exporter-arch} --server.address='https://www.agorascan.io/api/v1/client/metrics?apikey={apiKey}{machineName}' --beaconnode.type=prysm --beaconnode.address=http://localhost:8080/metrics --validator.type=prysm --validator.address=http://localhost:8081/metrics "
         },
         {
             id: 'lighthouse-graffiti',
-            config: "--monitoring-endpoint https://beaconcha.in/api/v1/client/metrics?apikey={apiKey}{machineName}"
+            config: "--monitoring-endpoint https://www.agorascan.io/api/v1/client/metrics?apikey={apiKey}{machineName}"
         },
         {
             id: 'nimbus-graffiti',
-            config: "./{exporter-arch} --server.address='https://beaconcha.in/api/v1/client/metrics?apikey={apiKey}{machineName}' --beaconnode.type=nimbus --beaconnode.address=http://localhost:8008/metrics"
+            config: "./{exporter-arch} --server.address='https://www.agorascan.io/api/v1/client/metrics?apikey={apiKey}{machineName}' --beaconnode.type=nimbus --beaconnode.address=http://localhost:8008/metrics"
         },
         {
             id: 'teku-graffiti',
-            config: "--metrics-publish-endpoint https://beaconcha.in/api/v1/client/metrics?apikey={apiKey}{machineName}"
+            config: "--metrics-publish-endpoint https://www.agorascan.io/api/v1/client/metrics?apikey={apiKey}{machineName}"
         }
     ]
 
@@ -337,7 +337,7 @@
                 <div class="card my-3">
                   <div class="card-header justify-content-between d-flex align-items-center">
                     <h3 class="h5">
-                      <span>Beaconcha.in Premium</span> <span class="mx-1">|</span>
+                      <span>www.agorascan.io Premium</span> <span class="mx-1">|</span>
                       <span style="font-size: 80%;" class="font-weight-light">
                         {{ if not .Premium.Active }}
                           Free Tier
@@ -378,7 +378,7 @@
                       <div class="my-2">
                         <span class="text-muted" style="margin-left: 12px; margin-right: 12px;">
                           {{ if not .Premium.Active }}
-                            Premium features for your beaconcha.in explorer and <a href="/mobile">beaconcha.in mobile app</a> experience. No ads, support for more validators and more.
+                            Premium features for your www.agorascan.io explorer and <a href="/mobile">www.agorascan.io mobile app</a> experience. No ads, support for more validators and more.
                           {{ else }}
                             Your premium subscription is active. Thank you for supporting us!
                           {{ end }}
@@ -458,7 +458,7 @@
                   </div>
                   <div class="card-body">
                     <span
-                      >Monitor your staking machine via the mobile app. Learn more <a href="https://kb.beaconcha.in/mobile-app-less-than-greater-than-beacon-node"><b>here</b></a
+                      >Monitor your staking machine via the mobile app. Learn more <a href="https://kb.www.agorascan.io/mobile-app-less-than-greater-than-beacon-node"><b>here</b></a
                       >.</span
                     ><br /><br />
 
@@ -510,7 +510,7 @@
                           <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionExample" style="margin: 15px;">
                             <div class="accordion-body">
                               <h4>1. Install Metric Exporter</h4>
-                              Download the latest beaconcha.in metrics exporter on your machine:<br /><br />
+                              Download the latest www.agorascan.io metrics exporter on your machine:<br /><br />
 
                               <div style="margin-left: 5px; margin-right: 5px;">
                                 <div style="float: left; width: 90%;">
@@ -568,7 +568,7 @@
                               <br />
 
                               <h4>2. Install Metric Exporter</h4>
-                              Download the latest beaconcha.in metrics exporter on your machine:<br /><br />
+                              Download the latest www.agorascan.io metrics exporter on your machine:<br /><br />
 
                               <div style="margin-left: 5px; margin-right: 5px;">
                                 <div style="float: left;  width: 90%;">

@@ -34,7 +34,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	epoch, err := strconv.ParseUint(epochString, 10, 64)
 
 	if err != nil {
-		data.Meta.Title = fmt.Sprintf("%v - Epoch %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, epochString, time.Now().Year())
+		data.Meta.Title = fmt.Sprintf("%v - Epoch %v - www.agorascan.io - %v", utils.Config.Frontend.SiteName, epochString, time.Now().Year())
 		data.Meta.Path = "/epoch/" + epochString
 		logger.Errorf("error parsing epoch index %v: %v", epochString, err)
 		err = epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)
@@ -47,28 +47,28 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data.Meta.Title = fmt.Sprintf("%v - Epoch %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, epoch, time.Now().Year())
+	data.Meta.Title = fmt.Sprintf("%v - Epoch %v - www.agorascan.io - %v", utils.Config.Frontend.SiteName, epoch, time.Now().Year())
 	data.Meta.Path = fmt.Sprintf("/epoch/%v", epoch)
 
 	epochPageData := types.EpochPageData{}
 
 	err = db.ReaderDb.Get(&epochPageData, `
-		SELECT 
-			epoch, 
-			blockscount, 
-			proposerslashingscount, 
-			attesterslashingscount, 
-			attestationscount, 
-			depositscount, 
-			voluntaryexitscount, 
-			validatorscount, 
-			averagevalidatorbalance, 
+		SELECT
+			epoch,
+			blockscount,
+			proposerslashingscount,
+			attesterslashingscount,
+			attestationscount,
+			depositscount,
+			voluntaryexitscount,
+			validatorscount,
+			averagevalidatorbalance,
 			finalized,
 			eligibleether,
 			globalparticipationrate,
 			votedether,
 			totalvalidatorbalance
-		FROM epochs 
+		FROM epochs
 		WHERE epoch = $1`, epoch)
 	if err != nil {
 		//Epoch not in database -> Show future epoch
@@ -117,19 +117,19 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = db.ReaderDb.Select(&epochPageData.Blocks, `
-		SELECT 
-			blocks.slot, 
-			blocks.proposer, 
-			blocks.blockroot, 
-			blocks.parentroot, 
-			blocks.attestationscount, 
-			blocks.depositscount, 
-			blocks.voluntaryexitscount, 
-			blocks.proposerslashingscount, 
+		SELECT
+			blocks.slot,
+			blocks.proposer,
+			blocks.blockroot,
+			blocks.parentroot,
+			blocks.attestationscount,
+			blocks.depositscount,
+			blocks.voluntaryexitscount,
+			blocks.proposerslashingscount,
 			blocks.attesterslashingscount,
        		blocks.status,
 			blocks.syncaggregate_participation
-		FROM blocks 
+		FROM blocks
 		WHERE epoch = $1
 		ORDER BY blocks.slot DESC`, epoch)
 	if err != nil {
@@ -181,9 +181,9 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	if epochPageData.Epoch > 0 {
 		prevEpochData := types.EpochPageData{}
 		err = db.ReaderDb.Get(&prevEpochData, `
-		SELECT 
+		SELECT
 			totalvalidatorbalance
-		FROM epochs 
+		FROM epochs
 		WHERE epoch = $1`, epochPageData.PreviousEpoch)
 
 		if err != nil {

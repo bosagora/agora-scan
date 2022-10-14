@@ -40,7 +40,7 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 	var income []types.ValidatorStatsTableRow
 	err = db.WriterDb.Select(&income,
 		`select day, start_balance, end_balance
-		 from validator_stats 
+		 from validator_stats
 		 where validatorindex=ANY($1) AND day > $2 AND day <= $3
 		 order by day desc`, validatorFilter, lowerBound, upperBound)
 	if err != nil {
@@ -160,7 +160,7 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 		pdf.SetY(5)
 		pdf.SetFont("Arial", "B", 12)
 		pdf.Cell(80, 0, "")
-		pdf.CellFormat(30, 10, fmt.Sprintf("Beaconcha.in Income History (%s - %s)", data[len(data)-1][0], data[0][0]), "", 0, "C", false, 0, "")
+		pdf.CellFormat(30, 10, fmt.Sprintf("www.agorascan.io Income History (%s - %s)", data[len(data)-1][0], data[0][0]), "", 0, "C", false, 0, "")
 		// pdf.Ln(-1)
 	}, true)
 
@@ -306,7 +306,7 @@ func getValidatorDetails(validators []uint64) [][]string {
 	var data []types.ValidatorPageData
 	err := db.WriterDb.Select(&data,
 		`select validatorindex, balanceactivation, balance, lastattestationslot
-		 from validators 
+		 from validators
 		 where validatorindex=ANY($1)
 		 order by validatorindex asc`, validatorFilter)
 	if err != nil {

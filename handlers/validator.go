@@ -121,7 +121,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 			validatorPageData.DepositsCount = uint64(len(deposits.Eth1Deposits))
 			if err != nil || len(deposits.Eth1Deposits) == 0 {
-				data.Meta.Title = fmt.Sprintf("%v - Validator %x - beaconcha.in - %v", utils.Config.Frontend.SiteName, pubKey, time.Now().Year())
+				data.Meta.Title = fmt.Sprintf("%v - Validator %x - www.agorascan.io - %v", utils.Config.Frontend.SiteName, pubKey, time.Now().Year())
 				data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 				err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 				if err != nil {
@@ -220,7 +220,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	// GetAvgOptimalInclusionDistance(index)
 
-	data.Meta.Title = fmt.Sprintf("%v - Validator %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, index, time.Now().Year())
+	data.Meta.Title = fmt.Sprintf("%v - Validator %v - www.agorascan.io - %v", utils.Config.Frontend.SiteName, index, time.Now().Year())
 	data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 
 	// logger.Infof("retrieving data, elapsed: %v", time.Since(start))
@@ -640,7 +640,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			rpln.rpl_stake         AS node_rpl_stake,
 			rpln.max_rpl_stake     AS node_max_rpl_stake,
 			rpln.min_rpl_stake     AS node_min_rpl_stake,
-			rpln.rpl_cumulative_rewards     AS rpl_cumulative_rewards 
+			rpln.rpl_cumulative_rewards     AS rpl_cumulative_rewards
 		FROM validators
 		LEFT JOIN rocketpool_minipools rplm ON rplm.pubkey = validators.pubkey
 		LEFT JOIN rocketpool_nodes rpln ON rplm.node_address = rpln.address
@@ -810,20 +810,20 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	var blocks []*types.IndexPageDataBlocks
 	err = db.ReaderDb.Select(&blocks, `
-		SELECT 
-			blocks.epoch, 
-			blocks.slot, 
-			blocks.proposer, 
-			blocks.blockroot, 
-			blocks.parentroot, 
-			blocks.attestationscount, 
-			blocks.depositscount, 
-			blocks.voluntaryexitscount, 
-			blocks.proposerslashingscount, 
-			blocks.attesterslashingscount, 
-			blocks.status, 
-			blocks.graffiti 
-		FROM blocks 
+		SELECT
+			blocks.epoch,
+			blocks.slot,
+			blocks.proposer,
+			blocks.blockroot,
+			blocks.parentroot,
+			blocks.attestationscount,
+			blocks.depositscount,
+			blocks.voluntaryexitscount,
+			blocks.proposerslashingscount,
+			blocks.attesterslashingscount,
+			blocks.status,
+			blocks.graffiti
+		FROM blocks
 		WHERE blocks.proposer = $1
 		ORDER BY `+orderBy+` `+orderDir+`
 		LIMIT $2 OFFSET $3`, index, length, start)
@@ -947,15 +947,15 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	if totalCount > 0 {
 		var blocks []*types.ValidatorAttestation
 		err = db.ReaderDb.Select(&blocks, `
-			SELECT 
-				aa.epoch, 
-				aa.attesterslot, 
-				aa.committeeindex, 
-				CASE 
+			SELECT
+				aa.epoch,
+				aa.attesterslot,
+				aa.committeeindex,
+				CASE
 					WHEN blocks.status = '3' THEN '3'
 					ELSE aa.status
 				END AS status,
-				CASE 
+				CASE
 					WHEN blocks.status = '3' THEN 0
 					ELSE aa.inclusionslot
 				END AS inclusionslot,
@@ -1044,14 +1044,14 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 
 	var attesterSlashings []*types.ValidatorAttestationSlashing
 	err = db.ReaderDb.Select(&attesterSlashings, `
-		SELECT 
-			blocks.slot, 
-			blocks.epoch, 
-			blocks.proposer, 
-			blocks_attesterslashings.attestation1_indices, 
-			blocks_attesterslashings.attestation2_indices 
-		FROM blocks_attesterslashings 
-		INNER JOIN blocks ON blocks.proposer = $1 and blocks_attesterslashings.block_slot = blocks.slot 
+		SELECT
+			blocks.slot,
+			blocks.epoch,
+			blocks.proposer,
+			blocks_attesterslashings.attestation1_indices,
+			blocks_attesterslashings.attestation2_indices
+		FROM blocks_attesterslashings
+		INNER JOIN blocks ON blocks.proposer = $1 and blocks_attesterslashings.block_slot = blocks.slot
 		WHERE attestation1_indices IS NOT NULL AND attestation2_indices IS NOT NULL`, index)
 
 	if err != nil {
@@ -1062,8 +1062,8 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 
 	var proposerSlashings []*types.ValidatorProposerSlashing
 	err = db.ReaderDb.Select(&proposerSlashings, `
-		SELECT blocks.slot, blocks.epoch, blocks.proposer, blocks_proposerslashings.proposerindex 
-		FROM blocks_proposerslashings 
+		SELECT blocks.slot, blocks.epoch, blocks.proposer, blocks_proposerslashings.proposerindex
+		FROM blocks_proposerslashings
 		INNER JOIN blocks ON blocks.proposer = $1 AND blocks_proposerslashings.block_slot = blocks.slot`, index)
 	if err != nil {
 		logger.Errorf("error retrieving block proposer slashings data: %v", err)
@@ -1220,8 +1220,8 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/validator/"+pubkey, 301)
 		} else {
 			_, err := db.WriterDb.Exec(`
-				INSERT INTO validator_names (publickey, name) 
-				VALUES($2, $1) 
+				INSERT INTO validator_names (publickey, name)
+				VALUES($2, $1)
 				ON CONFLICT (publickey) DO UPDATE SET name = excluded.name`, name, pubkeyDecoded)
 			if err != nil {
 				logger.Errorf("error saving validator name: %x: %v: %v", pubkeyDecoded, name, err)
@@ -1312,8 +1312,8 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	var validatorHistory []*types.ValidatorHistory
 	err = db.ReaderDb.Select(&validatorHistory, `
-			SELECT 
-				vbalance.epoch, 
+			SELECT
+				vbalance.epoch,
 				COALESCE(vbalance.balance - LAG(vbalance.balance) OVER (ORDER BY vbalance.epoch), 0) AS balancechange,
 				COALESCE(assign.attesterslot, -1) AS attestatation_attesterslot,
 				assign.inclusionslot AS attestation_inclusionslot,
@@ -1423,7 +1423,7 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data.Meta.Title = fmt.Sprintf("%v - Daily Validator Statistics %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, index, time.Now().Year())
+	data.Meta.Title = fmt.Sprintf("%v - Daily Validator Statistics %v - www.agorascan.io - %v", utils.Config.Frontend.SiteName, index, time.Now().Year())
 	data.Meta.Path = fmt.Sprintf("/validator/%v/stats", index)
 
 	validatorStatsTablePageData := &types.ValidatorStatsTablePageData{
@@ -1533,8 +1533,8 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		MaxPeriod  uint64 `db:"maxperiod"`
 	}
 	err = db.ReaderDb.Select(&countData, `
-		SELECT count(*)*$1 AS totalcount, max(period) AS maxperiod 
-		FROM sync_committees 
+		SELECT count(*)*$1 AS totalcount, max(period) AS maxperiod
+		FROM sync_committees
 		WHERE validatorindex = $2`, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod*utils.Config.Chain.Config.SlotsPerEpoch, index)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting countData of sync-assignments")
