@@ -92,7 +92,7 @@ func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepos
 	deposits := []*types.EthOneDepositsData{}
 
 	err := ReaderDb.Select(&deposits, `
-	SELECT 
+	SELECT
 		tx_hash,
 		tx_input,
 		tx_index,
@@ -104,7 +104,7 @@ func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepos
 		amount,
 		signature,
 		merkletree_index
-	FROM 
+	FROM
 		eth1_deposits
 	ORDER BY block_ts DESC
 	LIMIT $1
@@ -145,7 +145,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		if query != "" {
 			err = ReaderDb.Get(&totalCount, `
 				SELECT COUNT(*) FROM eth1_deposits as eth1
-				WHERE 
+				WHERE
 					ENCODE(eth1.publickey, 'hex') LIKE LOWER($1)
 					OR ENCODE(eth1.withdrawal_credentials, 'hex') LIKE LOWER($1)
 					OR ENCODE(eth1.from_address, 'hex') LIKE LOWER($1)
@@ -156,7 +156,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		if query != "" {
 			err = ReaderDb.Get(&totalCount, `
 				SELECT COUNT(*) FROM eth1_deposits as eth1
-				WHERE 
+				WHERE
 				CAST(eth1.block_number AS text) LIKE LOWER($1)`, query+"%")
 		}
 	}
@@ -171,7 +171,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 
 	if query != "" {
 		wholeQuery := fmt.Sprintf(`
-		SELECT 
+		SELECT
 			eth1.tx_hash as tx_hash,
 			eth1.tx_input as tx_input,
 			eth1.tx_index as tx_index,
@@ -190,7 +190,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		LEFT JOIN
 			(
 				SELECT pubkey,
-				CASE 
+				CASE
 					WHEN exitepoch <= $3 then 'exited'
 					WHEN activationepoch > $3 then 'pending'
 					WHEN slashed and activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'slashing_offline'
@@ -214,7 +214,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		err = ReaderDb.Select(&deposits, wholeQuery, length, start, latestEpoch, validatorOnlineThresholdSlot, query+"%")
 	} else {
 		err = ReaderDb.Select(&deposits, fmt.Sprintf(`
-		SELECT 
+		SELECT
 			eth1.tx_hash as tx_hash,
 			eth1.tx_input as tx_input,
 			eth1.tx_index as tx_index,
@@ -233,7 +233,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			LEFT JOIN
 			(
 				SELECT pubkey,
-				CASE 
+				CASE
 					WHEN exitepoch <= $3 then 'exited'
 					WHEN activationepoch > $3 then 'pending'
 					WHEN slashed and activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'slashing_offline'
@@ -328,7 +328,7 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 			COUNT(CASE WHEN v.activationepoch > $3 THEN 1 END) AS pendingcount,
 			COUNT(CASE WHEN v.slashed = 'f' AND v.exitepoch < $3 THEN 1 END) AS voluntary_exit_count
 		FROM (
-			SELECT 
+			SELECT
 				from_address,
 				publickey,
 				SUM(amount) AS amount,
@@ -338,7 +338,7 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 			GROUP BY from_address, publickey
 		) eth1
 		LEFT JOIN (
-			SELECT 
+			SELECT
 				pubkey,
 				slashed,
 				exitepoch,
@@ -377,7 +377,7 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 
 	if query != "" {
 		err := ReaderDb.Select(&deposits, fmt.Sprintf(`
-			SELECT 
+			SELECT
 				blocks_deposits.block_slot,
 				blocks_deposits.block_index,
 				blocks_deposits.proof,
@@ -398,7 +398,7 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 		}
 	} else {
 		err := ReaderDb.Select(&deposits, fmt.Sprintf(`
-			SELECT 
+			SELECT
 				blocks_deposits.block_slot,
 				blocks_deposits.block_index,
 				blocks_deposits.proof,
@@ -432,7 +432,7 @@ func GetEth2DepositsCount(search string) (uint64, error) {
 		SELECT COUNT(*)
 		FROM blocks_deposits
 		INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
-		WHERE 
+		WHERE
 			ENCODE(publickey, 'hex') LIKE LOWER($1)
 			OR ENCODE(withdrawalcredentials, 'hex') LIKE LOWER($1)
 			OR CAST(block_slot as varchar) LIKE LOWER($1)
@@ -449,15 +449,15 @@ func GetSlashingCount() (uint64, error) {
 
 	err := ReaderDb.Get(&slashings, `
 		SELECT SUM(count)
-		FROM 
+		FROM
 		(
-			SELECT COUNT(*) 
-			FROM 
-				blocks_attesterslashings 
+			SELECT COUNT(*)
+			FROM
+				blocks_attesterslashings
 				INNER JOIN blocks on blocks.slot = blocks_attesterslashings.block_slot and blocks.status = '1'
-			UNION 
-			SELECT COUNT(*) 
-			FROM 
+			UNION
+			SELECT COUNT(*)
+			FROM
 				blocks_proposerslashings
 				INNER JOIN blocks on blocks.slot = blocks_proposerslashings.block_slot and blocks.status = '1'
 		) as tbl`)
@@ -548,7 +548,7 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 	}
 
 	err = ReaderDb.Select(&deposits.Eth2Deposits, `
-		SELECT 
+		SELECT
 			blocks_deposits.block_slot,
 			blocks_deposits.block_index,
 			blocks_deposits.block_root,
@@ -643,7 +643,7 @@ func SaveValidatorQueue(validators *types.ValidatorQueue) error {
 		INSERT INTO queue (ts, entering_validators_count, exiting_validators_count)
 		VALUES (date_trunc('hour', now()), $1, $2)
 		ON CONFLICT (ts) DO UPDATE SET
-			entering_validators_count = excluded.entering_validators_count, 
+			entering_validators_count = excluded.entering_validators_count,
 			exiting_validators_count = excluded.exiting_validators_count`,
 		validators.Activating, validators.Exititing)
 	return err
@@ -701,7 +701,7 @@ func SaveEpoch(data *types.EpochData) error {
 		return fmt.Errorf("error saving blocks to db: %w", err)
 	}
 
-	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+10 {
+	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+100_000 {
 		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting validators because epoch is far behind head")
 	} else {
 		logger.Infof("exporting validators")
@@ -730,7 +730,7 @@ func SaveEpoch(data *types.EpochData) error {
 	}
 
 	// only export recent validator balances if the epoch is within the threshold
-	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+10 {
+	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+100_000 {
 		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting recent validator balance because epoch is far behind head")
 	} else {
 		logger.Infof("exporting recent validator balance")
@@ -770,24 +770,24 @@ func SaveEpoch(data *types.EpochData) error {
 
 	_, err = tx.Exec(`
 		INSERT INTO epochs (
-			epoch, 
-			blockscount, 
-			proposerslashingscount, 
-			attesterslashingscount, 
-			attestationscount, 
-			depositscount, 
-			voluntaryexitscount, 
-			validatorscount, 
-			averagevalidatorbalance, 
+			epoch,
+			blockscount,
+			proposerslashingscount,
+			attesterslashingscount,
+			attestationscount,
+			depositscount,
+			voluntaryexitscount,
+			validatorscount,
+			averagevalidatorbalance,
 			totalvalidatorbalance,
-			finalized, 
-			eligibleether, 
-			globalparticipationrate, 
+			finalized,
+			eligibleether,
+			globalparticipationrate,
 			votedether
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
-		ON CONFLICT (epoch) DO UPDATE SET 
-			blockscount             = excluded.blockscount, 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		ON CONFLICT (epoch) DO UPDATE SET
+			blockscount             = excluded.blockscount,
 			proposerslashingscount  = excluded.proposerslashingscount,
 			attesterslashingscount  = excluded.attesterslashingscount,
 			attestationscount       = excluded.attestationscount,
@@ -1012,9 +1012,9 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 				pubkeyhex,
 				status,
 				lastattestationslot
-			) 
+			)
 			VALUES %[3]s
-			ON CONFLICT (validatorindex) DO UPDATE SET 
+			ON CONFLICT (validatorindex) DO UPDATE SET
 				withdrawableepoch          = EXCLUDED.withdrawableepoch,
 				balance                    = EXCLUDED.balance,
 				effectivebalance           = EXCLUDED.effectivebalance,
@@ -1025,13 +1025,13 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 				balance1d                  = EXCLUDED.balance1d,
 				balance7d                  = EXCLUDED.balance7d,
 				balance31d                 = EXCLUDED.balance31d,
-				lastattestationslot        = 
-					CASE 
-					WHEN EXCLUDED.lastattestationslot > COALESCE(validators.lastattestationslot, 0) THEN EXCLUDED.lastattestationslot 
-					ELSE validators.lastattestationslot 
+				lastattestationslot        =
+					CASE
+					WHEN EXCLUDED.lastattestationslot > COALESCE(validators.lastattestationslot, 0) THEN EXCLUDED.lastattestationslot
+					ELSE validators.lastattestationslot
 					END,
-				status                     = 
-					CASE 
+				status                     =
+					CASE
 					WHEN EXCLUDED.exitepoch <= %[1]d AND EXCLUDED.slashed THEN 'slashed'
 					WHEN EXCLUDED.exitepoch <= %[1]d THEN 'exited'
 					WHEN EXCLUDED.activationeligibilityepoch = 9223372036854775807 THEN 'deposited'
@@ -1040,7 +1040,7 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 					WHEN EXCLUDED.slashed THEN 'slashing_online'
 					WHEN EXCLUDED.exitepoch < 9223372036854775807 AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'exiting_offline'
 					WHEN EXCLUDED.exitepoch < 9223372036854775807 THEN 'exiting_online'
-					WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'active_offline' 
+					WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'active_offline'
 					ELSE 'active_online'
 					END`,
 			latestBlock, thresholdSlot, strings.Join(valueStrings, ","))
@@ -1267,7 +1267,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 
 	stmtDeposits, err := tx.Prepare(`
 		INSERT INTO blocks_deposits (block_slot, block_index, block_root, proof, publickey, withdrawalcredentials, amount, signature)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (block_slot, block_index) DO NOTHING`)
 	if err != nil {
 		return err
@@ -1611,8 +1611,8 @@ func GetActiveValidatorCount() (uint64, error) {
 
 func GetValidatorNames() (map[uint64]string, error) {
 	rows, err := ReaderDb.Query(`
-		SELECT validatorindex, validator_names.name 
-		FROM validators 
+		SELECT validatorindex, validator_names.name
+		FROM validators
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		WHERE validator_names.name IS NOT NULL`)
 
@@ -1705,14 +1705,14 @@ func GetValidatorsBalanceDecrease(epoch uint64) ([]struct {
 
 	err := ReaderDb.Select(&dbResult, `
 	SELECT validatorindex, startbalance, endbalance, a.pubkey AS pubkey FROM (
-		SELECT 
+		SELECT
 			v.validatorindex,
-			v.pubkeyhex AS pubkey, 
-			vb0.balance AS endbalance, 
-			vb3.balance AS startbalance, 
+			v.pubkeyhex AS pubkey,
+			vb0.balance AS endbalance,
+			vb3.balance AS startbalance,
 			(SELECT MAX(epoch) FROM (
 				SELECT epoch, balance-LAG(balance) OVER (ORDER BY epoch) AS diff
-				FROM validator_balances_recent 
+				FROM validator_balances_recent
 				WHERE validatorindex = v.validatorindex AND epoch > $1 - 10
 			) b WHERE diff > 0) AS lastbalanceincreaseepoch
 		from validators v
@@ -1751,7 +1751,7 @@ func GetValidatorsGotSlashed(epoch uint64) ([]struct {
 	err := ReaderDb.Select(&dbResult, `
 		WITH
 			slashings AS (
-				SELECT DISTINCT ON (slashedvalidator) 
+				SELECT DISTINCT ON (slashedvalidator)
 					slot,
 					epoch,
 					slasher,
@@ -1759,25 +1759,25 @@ func GetValidatorsGotSlashed(epoch uint64) ([]struct {
 					reason
 				FROM (
 					SELECT
-						blocks.slot, 
-						blocks.epoch, 
-						blocks.proposer AS slasher, 
+						blocks.slot,
+						blocks.epoch,
+						blocks.proposer AS slasher,
 						UNNEST(ARRAY(
 							SELECT UNNEST(attestation1_indices)
 								INTERSECT
 							SELECT UNNEST(attestation2_indices)
-						)) AS slashedvalidator, 
+						)) AS slashedvalidator,
 						'Attestation Violation' AS reason
-					FROM blocks_attesterslashings 
+					FROM blocks_attesterslashings
 					LEFT JOIN blocks ON blocks_attesterslashings.block_slot = blocks.slot
 					WHERE blocks.status = '1' AND blocks.epoch > $1
 					UNION ALL
 						SELECT
-							blocks.slot, 
-							blocks.epoch, 
-							blocks.proposer AS slasher, 
+							blocks.slot,
+							blocks.epoch,
+							blocks.proposer AS slasher,
 							blocks_proposerslashings.proposerindex AS slashedvalidator,
-							'Proposer Violation' AS reason 
+							'Proposer Violation' AS reason
 						FROM blocks_proposerslashings
 						LEFT JOIN blocks ON blocks_proposerslashings.block_slot = blocks.slot
 						WHERE blocks.status = '1' AND blocks.epoch > $1

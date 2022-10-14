@@ -6,7 +6,7 @@ const numEtries = 16
 
 function showDoner(addr, name, icon, msg) {
   if (msg === "" || msg === null || msg.includes("<") || msg.includes(">")) {
-    msg = `<span style="font-style: italic;">Donated to beaconcha.in \u2764</span>`
+    msg = `<span style="font-style: italic;">Donated to www.agorascan.io \u2764</span>`
   }
   let fullmsg = ""
   if (msg.length > 120) {
@@ -17,7 +17,7 @@ function showDoner(addr, name, icon, msg) {
   name = name.replace("<", "").replace(">", "")
   $("#hero-feed ul").prepend(`<li class="fade-in hover-shadow">
         <div class="d-flex flex-row" style="cursor: pointer;" onclick='window.open("https://gitcoin.co/grants/258/beaconchain-open-source-eth2-blockchain-explorer")'>
-        <img src="${icon}"/> 
+        <img src="${icon}"/>
         <div class="d-flex flex-column usrdiv">
             <div class="d-flex flex-row">
             <span>${name}</span>

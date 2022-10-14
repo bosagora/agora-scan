@@ -22,7 +22,7 @@ frontend:
   siteSubtitle: "Showing the <a href='https://prylabs.net'>💎 Prysm Eth2 Testnet</a>" # Subtitle shown on the main page
   csrfAuthKey: '0123456789abcdef000000000000000000000000000000000000000000000000'
   jwtSigningSecret: "0123456789abcdef000000000000000000000000000000000000000000000000"
-  jwtIssuer: "beaconcha.in"
+  jwtIssuer: "www.agorascan.io"
   jwtValidityInMinutes: 30
   server:
     host: "localhost" # Address to listen on

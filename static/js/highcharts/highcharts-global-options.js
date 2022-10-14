@@ -5,8 +5,8 @@ Highcharts.setOptions({
   },
   credits: {
     enabled: true,
-    href: "https://beaconcha.in",
-    text: "beaconcha.in",
+    href: "https://www.agorascan.io",
+    text: "www.agorascan.io",
     style: {
       color: "var(--body-color)",
     },
