@@ -471,16 +471,16 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 
 		validatorPageData.IncomeHistoryChartData[len(validatorPageData.IncomeHistoryChartData)-1] = &types.ChartDataPoint{X: float64(utils.DayToTime(int64(currentDay)).Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(lastDayIncome) / 1000000000), Color: lastDayIncomeColor}
-	} else if len(incomeHistory) == 0 && validatorPageData.ActivationEpoch < services.LatestEpoch() {
-		lastDayBalance := int64(0)
-		lastDayIncome := int64(validatorPageData.CurrentBalance) - lastDayBalance - int64(lastDayDepositsSum)
-		lastDayIncomeColor := "#7cb5ec"
-		if lastDayIncome < 0 {
-			lastDayIncomeColor = "#f7a35c"
-		}
-		validatorPageData.IncomeHistoryChartData = []*types.ChartDataPoint{
-			{X: float64(utils.DayToTime(int64(currentDay)).Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(lastDayIncome) / 1000000000), Color: lastDayIncomeColor},
-		}
+		// } else if len(incomeHistory) == 0 && validatorPageData.ActivationEpoch < services.LatestEpoch() {
+		// 	lastDayBalance := int64(0)
+		// 	lastDayIncome := int64(validatorPageData.CurrentBalance) - lastDayBalance - int64(lastDayDepositsSum)
+		// 	lastDayIncomeColor := "#7cb5ec"
+		// 	if lastDayIncome < 0 {
+		// 		lastDayIncomeColor = "#f7a35c"
+		// 	}
+		// 	validatorPageData.IncomeHistoryChartData = []*types.ChartDataPoint{
+		// 		{X: float64(utils.DayToTime(int64(currentDay)).Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(lastDayIncome) / 1000000000), Color: lastDayIncomeColor},
+		// 	}
 	} else {
 		validatorPageData.IncomeHistoryChartData = []*types.ChartDataPoint{}
 	}
