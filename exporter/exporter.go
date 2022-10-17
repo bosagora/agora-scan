@@ -578,14 +578,14 @@ func updateValidatorPerformance() error {
 
 	var balances []types.Validator
 	err = tx.Select(&balances, `
-		SELECT 
+		SELECT
 			   validatorindex,
 			   pubkey,
        		   activationepoch,
-		       COALESCE(balance, 0) AS balance, 
-			   COALESCE(balanceactivation, 0) AS balanceactivation, 
-			   COALESCE(balance1d, 0) AS balance1d, 
-			   COALESCE(balance7d, 0) AS balance7d, 
+		       COALESCE(balance, 0) AS balance,
+			   COALESCE(balanceactivation, 0) AS balanceactivation,
+			   COALESCE(balance1d, 0) AS balance1d,
+			   COALESCE(balance7d, 0) AS balance7d,
 			   COALESCE(balance31d , 0) AS balance31d
 		FROM validators`)
 	if err != nil {
@@ -699,7 +699,7 @@ func updateValidatorPerformance() error {
 			valueArgs = append(valueArgs, rank7d)
 		}
 
-		stmt := fmt.Sprintf(`		
+		stmt := fmt.Sprintf(`
 			INSERT INTO validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d, rank7d)
 			VALUES %s`, strings.Join(valueStrings, ","))
 
@@ -729,9 +729,9 @@ func finalityCheckpointsUpdater(client rpc.Client) {
 		}
 		_, err = db.WriterDb.Exec(`
 			insert into finality_checkpoints (
-				epoch, 
-				current_justified_epoch, current_justified_root, 
-				previous_justified_epoch, previous_justified_root, 
+				epoch,
+				current_justified_epoch, current_justified_root,
+				previous_justified_epoch, previous_justified_root,
 				finalized_epoch, finalized_root
 			)
 			values ($1, $2, $3, $4, $5, $6, $7)`,
@@ -835,8 +835,8 @@ func genesisDepositsExporter() {
 		err = db.WriterDb.Get(&missingEth1Deposits, `
 			SELECT COUNT(*)
 			FROM validators v
-			LEFT JOIN ( 
-				SELECT DISTINCT ON (publickey) publickey, signature FROM eth1_deposits 
+			LEFT JOIN (
+				SELECT DISTINCT ON (publickey) publickey, signature FROM eth1_deposits
 			) d ON d.publickey = v.pubkey
 			WHERE d.publickey IS NULL AND v.validatorindex < $1`, genesisValidatorsCount)
 		if err != nil {
@@ -869,12 +869,12 @@ func genesisDepositsExporter() {
 					b.balance as amount,
 					d.signature as signature
 				FROM validators v
-				LEFT JOIN validator_balances_p b 
+				LEFT JOIN validator_balances_p b
 					ON v.validatorindex = b.validatorindex
 					AND b.epoch = 0
 					AND b.week = 0
-				LEFT JOIN ( 
-					SELECT DISTINCT ON (publickey) publickey, signature FROM eth1_deposits 
+				LEFT JOIN (
+					SELECT DISTINCT ON (publickey) publickey, signature FROM eth1_deposits
 				) d ON d.publickey = v.pubkey
 				WHERE v.validatorindex < $1`, genesisValidatorsCount)
 		if err != nil {
