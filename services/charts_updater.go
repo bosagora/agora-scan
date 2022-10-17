@@ -202,8 +202,8 @@ func blocksChartData() (*types.GenericChartData, error) {
 			'<span style="font-weight:bold;">' + point.series.name + ':</span></td><td>' +
 			point.percentage.toFixed(2)+'% ('+point.y+' blocks)'
 			'</td></tr>'
-	}, header) + 
-	'<tr><td>' + 
+	}, header) +
+	'<tr><td>' +
 	'<span>\u25CF </span><span style="font-weight:bold;">Total:</span></td><td>' + total + ' blocks'
 	'</td></tr>' +
 	'</table>'
@@ -595,7 +595,7 @@ func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 						and d.block_slot/32 > validators.activationepoch
 				order by epoch
 			)
-		select 
+		select
 			e.epoch,
 			e.validatorscount,
 			e.totalvalidatorbalance-coalesce(fd.amount,0)-coalesce(ed.amount,0) as rewards
@@ -691,7 +691,7 @@ func stakingRewardsChartData() (*types.GenericChartData, error) {
 						and d.block_slot/32 > validators.activationepoch
 				order by epoch
 			)
-		select 
+		select
 			e.epoch,
 			e.totalvalidatorbalance-coalesce(fd.amount,0)-coalesce(ed.amount,0) as rewards
 		from epochs e
@@ -771,12 +771,12 @@ func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 					(d.block_slot/32) as epoch,
 					sum(d.amount) as amount
 					from validators
-				inner join blocks_deposits d 
+				inner join blocks_deposits d
 					on d.publickey = validators.pubkey
 					and (d.block_slot/32) > validators.activationepoch
 				group by epoch
 			)
-		select 
+		select
 			epochs.epoch, eligibleether, votedether, validatorscount, globalparticipationrate,
 			coalesce(totalvalidatorbalance - coalesce(ed.amount,0),0) as totalvalidatorbalance
 		from epochs
@@ -878,7 +878,7 @@ func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 
 	err := db.ReaderDb.Select(&rows, `
 		SELECT
-			epoch, 
+			epoch,
 			COALESCE(totalvalidatorbalance, 0) AS totalvalidatorbalance,
 			COALESCE(eligibleether, 0) AS eligibleether
 		FROM epochs ORDER BY epoch`)
@@ -944,20 +944,20 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 	err = tx.Select(&rows, `
 		with
 			stats as (
-				select 
+				select
 					min(balance) as min,
 					max(balance) as max
-				from validators 
+				from validators
 			),
 			balances as (
 				select balance
 				from validators
 			),
 			histogram as (
-				select 
+				select
 					case
 						when min = max then 0
-						else width_bucket(balance, min, max, 999) 
+						else width_bucket(balance, min, max, 999)
 					end as bucket,
 					max(balance) as max,
 					count(*)
@@ -1027,7 +1027,7 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 	err = tx.Select(&rows, `
 		with
 			stats as (
-				select 
+				select
 					min(effectivebalance) as min,
 					max(effectivebalance) as max
 				from validators
@@ -1037,10 +1037,10 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 				from validators
 			),
 			histogram as (
-				select 
+				select
 					case
 						when min = max then 0
-						else width_bucket(effectivebalance, min, max, 999) 
+						else width_bucket(effectivebalance, min, max, 999)
 					end as bucket,
 					max(effectivebalance) as max,
 					count(*)
@@ -1100,13 +1100,13 @@ func performanceDistribution1dChartData() (*types.GenericChartData, error) {
 	err = db.ReaderDb.Select(&rows, `
 		with
 			stats as (
-				select 
+				select
 					min(performance1d) as min,
 					max(performance1d) as max
 				from validator_performance
 			),
 			histogram as (
-				select 
+				select
 					width_bucket(performance1d, min, max, 9999) as bucket,
 					max(performance1d) as max,
 					count(*) as cnt
@@ -1166,13 +1166,13 @@ func performanceDistribution7dChartData() (*types.GenericChartData, error) {
 	err = db.ReaderDb.Select(&rows, `
 		with
 			stats as (
-				select 
+				select
 					min(performance7d) as min,
 					max(performance7d) as max
 				from validator_performance
 			),
 			histogram as (
-				select 
+				select
 					width_bucket(performance7d, min, max, 9999) as bucket,
 					max(performance7d) as max,
 					count(*) as cnt
@@ -1232,13 +1232,13 @@ func performanceDistribution31dChartData() (*types.GenericChartData, error) {
 	err = db.ReaderDb.Select(&rows, `
 		with
 			stats as (
-				select 
+				select
 					min(performance31d) as min,
 					max(performance31d) as max
 				from validator_performance
 			),
 			histogram as (
-				select 
+				select
 					width_bucket(performance31d, min, max, 9999) as bucket,
 					max(performance31d) as max,
 					count(*) as cnt
@@ -1298,16 +1298,16 @@ func performanceDistribution365dChartData() (*types.GenericChartData, error) {
 	err = db.ReaderDb.Select(&rows, `
 		with
 			stats as (
-				select 
+				select
 					min(performance365d) as min,
 					max(performance365d) as max
 				from validator_performance
 			),
 			histogram as (
-				select 
+				select
 					case
 						when min = max then 0
-						else width_bucket(performance365d, min, max, 999) 
+						else width_bucket(performance365d, min, max, 999)
 					end as bucket,
 					max(performance365d) as max,
 					count(*) as cnt
@@ -1378,7 +1378,7 @@ func depositsChartData() (*types.GenericChartData, error) {
 	}{}
 
 	err = db.ReaderDb.Select(&eth2Rows, `
-		select block_slot as slot, amount 
+		select block_slot as slot, amount
 		from blocks_deposits
 		order by slot`)
 	if err != nil {
@@ -1493,14 +1493,14 @@ func poolsDistributionChartData() (*types.GenericChartData, error) {
 		TooltipFormatter: `function(){ return '<b>'+this.point.name+'</b><br\>Percentage: '+this.point.percentage.toFixed(2)+'%<br\>Validators: '+this.point.y }`,
 		PlotOptionsPie: `{
 			borderWidth: 1,
-			borderColor: null, 
-			dataLabels: { 
-				enabled:true, 
-				formatter: function() { 
+			borderColor: null,
+			dataLabels: {
+				enabled:true,
+				formatter: function() {
 					var name = this.point.name.length > 20 ? this.point.name.substring(0,20)+'...' : this.point.name;
-					return '<span style="stroke:none; fill: var(--font-color)"><b style="stroke:none; fill: var(--font-color)">'+name+'</b></span>' 
-				} 
-			} 
+					return '<span style="stroke:none; fill: var(--font-color)"><b style="stroke:none; fill: var(--font-color)">'+name+'</b></span>'
+				}
+			}
 		}`,
 		PlotOptionsSeriesCursor: "pointer",
 		Series: []*types.GenericChartDataSeries{
@@ -1529,16 +1529,16 @@ func graffitiCloudChartData() (*types.GenericChartData, error) {
 	// \x are missed blocks
 	// \x0000000000000000000000000000000000000000000000000000000000000000 are empty graffities
 	err := db.ReaderDb.Select(&rows, `
-		with 
+		with
 			graffities as (
 				select count(*), graffiti
-				from blocks 
+				from blocks
 				where graffiti <> '\x' and graffiti <> '\x0000000000000000000000000000000000000000000000000000000000000000'
 				group by graffiti order by count desc limit 25
 			)
 		select count(distinct blocks.proposer) as validators, graffities.graffiti as name, graffities.count as weight
-		from blocks 
-			inner join graffities on blocks.graffiti = graffities.graffiti 
+		from blocks
+			inner join graffities on blocks.graffiti = graffities.graffiti
 		group by graffities.graffiti, graffities.count
 		order by weight desc`)
 	if err != nil {
