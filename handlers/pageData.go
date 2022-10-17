@@ -22,7 +22,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		HeaderAd: false,
 		Meta: &types.Meta{
 			Title:       fmt.Sprintf("%v - %v - www.agorascan.io - %v", utils.Config.Frontend.SiteName, title, time.Now().Year()),
-			Description: "www.agorascan.io makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
+			Description: "www.agorascan.io makes the Agora consensus layer blockchain accessible to non-technical end users",
 			Path:        path,
 			GATag:       utils.Config.Frontend.GATag,
 			NoTrack:     false,
