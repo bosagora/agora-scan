@@ -32,7 +32,7 @@
     </div>
     {{ if ne .Slot 0 }}
       <div class="row border-bottom p-3 mx-0">
-        <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="A chosen validator by the beacon chain to propose the next block">Proposer:</span></div>
+        <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="A chosen validator by the consensus chain to propose the next block">Proposer:</span></div>
         <div class="col-md-10">{{ formatValidatorWithName .Proposer .ProposerName }}</div>
       </div>
     {{ end }}
