@@ -62,7 +62,7 @@ func Start(client rpc.Client) error {
 			logger.Fatal(err)
 		}
 
-		for epoch := uint64(0); epoch <= head.HeadEpoch; epoch++ {
+		for epoch := uint64(1); epoch <= head.HeadEpoch; epoch++ {
 			err := ExportEpoch(epoch, client)
 
 			if err != nil {
@@ -99,7 +99,7 @@ func Start(client rpc.Client) error {
 			logger.Fatal(err)
 		}
 
-		if len(epochs) == 0 || (len(epochs) > 0 && epochs[0] != 0) {
+		if len(epochs) > 0 && epochs[0] != 0 {
 			err := ExportEpoch(0, client)
 			if err != nil {
 				logger.Error(err)
@@ -135,7 +135,7 @@ func Start(client rpc.Client) error {
 			logger.Fatal(err)
 		}
 
-		nodeBlocks, err := GetLastBlocks(0, head.HeadEpoch, client)
+		nodeBlocks, err := GetLastBlocks(1, head.HeadEpoch, client)
 		if err != nil {
 			logger.Fatal(err)
 		}
