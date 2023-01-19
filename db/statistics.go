@@ -119,7 +119,7 @@ func WriteStatisticsForDay(day uint64) error {
 			select validators.validatorindex, $3, count(*), sum(amount)
 			from blocks_deposits
 			inner join validators on blocks_deposits.publickey = validators.pubkey
-			where block_slot >= $1 * 32 and block_slot <= $2 * 32 and status = '1'
+			where block_slot >= $1 * 32 and block_slot <= $2 * 32
 			group by validators.validatorindex
 		) 
 		on conflict (validatorindex, day) do
