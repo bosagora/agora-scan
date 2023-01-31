@@ -128,7 +128,7 @@
                 // ajax: '/poap/data',
                 pagingType: 'input',
                 language: {
-                    searchPlaceholder: 'Search by BizNet Address',
+                    searchPlaceholder: 'Search by Agora Address',
                     search: '',
                     paginate: {
                         previous: '<i class="fas fa-chevron-left"></i>',
@@ -239,20 +239,20 @@
             <b>There are 3 different tokens</b>
           </p>
           <p><b>Genesis depositor:</b> Anyone who deposits 40,000 BOA on the deposit contract.</p>
-          <p><b>Block Proposer 1 - 1024:</b> Validators that propose one of the first 1024 blocks and have to have an encoded BizNet address on the graffiti field</p>
-          <p><b>Block Proposer 1 - 32768:</b> Validators that propose one of the the first 32768 blocks and have to have an encoded BizNet address on the graffiti field.</p>
+          <p><b>Block Proposer 1 - 1024:</b> Validators that propose one of the first 1024 blocks and have to have an encoded Agora address on the graffiti field</p>
+          <p><b>Block Proposer 1 - 32768:</b> Validators that propose one of the the first 32768 blocks and have to have an encoded Agora address on the graffiti field.</p>
           <h2 class="h5">What is POAP?</h2>
           <p>The Proof of Attendance Protocol is a dapp that distributes badges in the form of ERC-721 tokens to prove you participated in an event. More info on the dapp and the multiclient token can be found <a href="https://app.poap.xyz/scan/poap.eth">here</a>.</p>
           <h2 class="h5">How will it work?</h2>
 
           <ol class="poap-how-list">
             <li>Install an Beacon client and set up a node and validator.</li>
-            <li>Add the BizNet address you want to receive the badge within the field provided.</li>
+            <li>Add the Agora address you want to receive the badge within the field provided.</li>
             <li>Add the generated graffiti flag to your validator client.</li>
             <li>
               If you propose a block between genesis and block
               <ins>32768</ins>
-              , your BizNet address will be recorded on the beacon-chain, and you will be able to claim a token with that address using POAPs website.
+              , your Agora address will be recorded on the beacon-chain, and you will be able to claim a token with that address using POAPs website.
             </li>
             <li>The tokens will be distributed via a mechanism called a <a href="https://blog.ricmoo.com/merkle-air-drops-e6406945584d">merkle drop</a>. This is like an airdrop, but badges are only distributed to those who actively claim them reducing state bloat and chain congestion.</li>
           </ol>
@@ -408,7 +408,7 @@
             <table style="width:fit-content" class="table" id="poap-table">
               <thead>
                 <tr>
-                  <th rowspan="2">BizNet Address</th>
+                  <th rowspan="2">Agora Address</th>
                   <th colspan="2">Total</th>
                   {{ range $i, $client := .PoapClients }}
                     <th colspan="2">{{ $client }}</th>
