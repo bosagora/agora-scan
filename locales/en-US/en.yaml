@@ -10,7 +10,7 @@ p2_text:
   <a href="/validators/eth1deposits" class="text-truncate text-monospace">
   0xC26Dd0f6e94afE288a2dd5D300F4dDaA0D93D9CB</a>.
   Each deposit is registered by the Agora chain after a block delay of <i>10</i>
-  Biznet blocks. The earliest possible genesis time and the estimated genesis
+  Agora-el blocks. The earliest possible genesis time and the estimated genesis
   time (according to the rate of deposits) can be seen on the right.'
 p3_title: "Explore & Manage"
 p3_text: '
