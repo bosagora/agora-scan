@@ -1426,17 +1426,17 @@ func depositsChartData() (*types.GenericChartData, error) {
 		Type:         "column",
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name:  "Beacon",
+				Name:  "Agora-CL",
 				Data:  dailyEth2Deposits,
 				Stack: "eth2",
 			},
 			{
-				Name:  "BizNet (success)",
+				Name:  "Mainnet (success)",
 				Data:  dailySuccessfulEth1Deposits,
 				Stack: "eth1",
 			},
 			{
-				Name:  "BizNet (failed)",
+				Name:  "Mainnet (failed)",
 				Data:  dailyFailedEth1Deposits,
 				Stack: "eth1",
 			},
