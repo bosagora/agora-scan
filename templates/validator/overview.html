@@ -82,12 +82,8 @@
             {{ if eq .InclusionDelay 0 }}
               A BOA deposit has been made, and your validator will be voted into the activation queue once the deposited amount sums up to 40,000 BOA.
             {{ else }}
-              <!-- The last ETH1 deposit was made  {{ if gt .Deposits.LastEth1DepositTs 0 }}<span aria-ethereum-date-format="FROMNOW" aria-ethereum-date="{{ .Deposits.LastEth1DepositTs }}"></span>{{ end }}, it will take <a href="https://kb.agorascan.io/ethereum-2.0-and-depositing-process">around {{ .InclusionDelay }} hours</a>  until your deposit is processed by the consensus chain. This validator will be eligible for activation once the deposited amount sums up to 32 ETH.
-                            -->
-              The last BOA deposit was made {{ if gt .Deposits.LastEth1DepositTs 0 }}<span aria-ethereum-date-format="FROMNOW" aria-ethereum-date="{{ .Deposits.LastEth1DepositTs }}"></span>{{ end }}, it will take <a href="https://kb.agorascan.io/ethereum-2.0-and-depositing-process">around 16-24 hours</a> until your deposit is processed by the consensus chain. This validator will be eligible for activation once the deposited amount sums up to 40,000 BOA.
+              The last BOA deposit was made {{ if gt .Deposits.LastEth1DepositTs 0 }}<span aria-ethereum-date-format="FROMNOW" aria-ethereum-date="{{ .Deposits.LastEth1DepositTs }}"></span>{{ end }}, it will take around 16-24 hours until your deposit is processed by the consensus chain. This validator will be eligible for activation once the deposited amount sums up to 40,000 BOA.
             {{ end }}
-            <!-- {{ if and .PendingCount (and (gt .EstimatedActivationTs 0) (lt .EstimatedActivationTs 9223372036854775807)) }}This validator will be activated approximately <span class="font-weight-bolder">{{ .EstimatedActivationTs | formatTsWithoutTooltip }}</span> after being registered by the consensus chain.{{ end }}
-                        -->
           </span>
         </div>
       </div>
@@ -108,7 +104,7 @@
           {{ if ne .ActivationEpoch 9223372036854775807 }}
             This validator has been processed by the consensus chain and is currently waiting to be activated. It will approximately be activated on <span class="font-weight-bolder" title="{{ .ActivationTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .ActivationTs.Unix }}">{{ .ActivationTs }}</span> during epoch <span class="font-weight-bolder">{{ .ActivationEpoch }}</span>. Make sure your nodes and your client is up and running <em>before</em> the countdown reaches zero.
           {{ else }}
-            This validator has been registered by the consensus chain and is currently waiting to be voted into the activation queue. You can read more about this process in the <a href="https://kb.agorascan.io/ethereum-2.0-depositing">Ethereum 2.0 Knowledge Base</a>.
+            This validator has been registered by the consensus chain and is currently waiting to be voted into the activation queue.
           {{ end }}
         </div>
         {{ if lt .ActivationEpoch 9223372036854775807 }}
