@@ -1431,12 +1431,12 @@ func depositsChartData() (*types.GenericChartData, error) {
 				Stack: "eth2",
 			},
 			{
-				Name:  "Mainnet (success)",
+				Name:  "Agora-EL (success)",
 				Data:  dailySuccessfulEth1Deposits,
 				Stack: "eth1",
 			},
 			{
-				Name:  "Mainnet (failed)",
+				Name:  "Agora-EL (failed)",
 				Data:  dailyFailedEth1Deposits,
 				Stack: "eth1",
 			},
