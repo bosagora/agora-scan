@@ -530,12 +530,13 @@ func GetLatestStats() *types.Stats {
 					DepositCount: 0,
 				},
 			},
-			InvalidDepositCount:   new(uint64),
-			UniqueValidatorCount:  new(uint64),
-			TotalValidatorCount:   new(uint64),
-			ActiveValidatorCount:  new(uint64),
-			PendingValidatorCount: new(uint64),
-			ValidatorChurnLimit:   new(uint64),
+			InvalidDepositCount:            new(uint64),
+			UniqueValidatorCount:           new(uint64),
+			TotalValidatorCount:            new(uint64),
+			ActiveValidatorCount:           new(uint64),
+			PendingValidatorCount:          new(uint64),
+			ValidatorChurnLimit:            new(uint64),
+			LatestValidatorWithdrawalIndex: new(uint64),
 		}
 	} else if stats.(*types.Stats).TopDepositors != nil && len(*stats.(*types.Stats).TopDepositors) == 1 {
 		*stats.(*types.Stats).TopDepositors = append(*stats.(*types.Stats).TopDepositors, types.StatsTopDepositors{

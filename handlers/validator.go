@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"math/big"
 	"net/http"
 	"sort"
 	"strconv"
@@ -51,7 +53,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	var index uint64
 	var err error
 
+	latestEpoch := services.LatestEpoch()
+	lastFinalizedEpoch := services.LatestFinalizedEpoch()
+
 	validatorPageData := types.ValidatorPageData{}
+
+	validatorPageData.CappellaHasHappened = latestEpoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
 
 	stats := services.GetLatestStats()
 	churnRate := stats.ValidatorChurnLimit
@@ -238,6 +245,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validators.activationepoch,
 			validators.exitepoch,
 			validators.lastattestationslot,
+			validators.withdrawalcredentials,
 			COALESCE(validator_names.name, '') AS name,
 			COALESCE(validator_pool.pool, '') AS pool,
 			COALESCE(validators.balance, 0) AS balance,
@@ -499,6 +507,89 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.Income7d = earnings.LastWeek
 	validatorPageData.Income31d = earnings.LastMonth
 	validatorPageData.Apr = earnings.APR
+
+	if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x01}) {
+		// validators can have 0x01 credentials even before the cappella fork
+		validatorPageData.IsWithdrawableAddress = true
+	}
+
+	if validatorPageData.CappellaHasHappened {
+
+		// get validator withdrawals
+		withdrawalsCount, lastWithdrawalsEpoch, err := db.GetValidatorWithdrawalsCount(validatorPageData.Index)
+		if err != nil {
+			logger.Errorf("error getting validator withdrawals count from db: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		validatorPageData.WithdrawalCount = withdrawalsCount
+
+		blsChange, err := db.GetValidatorBLSChange(validatorPageData.Index)
+		if err != nil {
+			logger.Errorf("error getting validator bls change from db: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		validatorPageData.BLSChange = blsChange
+
+		if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x00}) && blsChange != nil {
+			// blsChanges are only possible afters cappeala
+			validatorPageData.IsWithdrawableAddress = true
+		}
+
+		// only calculate the expected next withdrawal if the validator is eligible
+		isFullWithdrawal := validatorPageData.CurrentBalance > 0 && validatorPageData.WithdrawableEpoch <= validatorPageData.Epoch
+		isPartialWithdrawal := validatorPageData.EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && validatorPageData.CurrentBalance > utils.Config.Chain.Config.MaxEffectiveBalance
+		if stats != nil && stats.LatestValidatorWithdrawalIndex != nil && stats.TotalValidatorCount != nil && validatorPageData.IsWithdrawableAddress && (isFullWithdrawal || isPartialWithdrawal) {
+			distance, err := GetWithdrawableCountFromCursor(validatorPageData.Epoch, validatorPageData.Index, *stats.LatestValidatorWithdrawalIndex)
+			if err != nil {
+				logger.Errorf("error getting withdrawable validator count from cursor: %v", err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+
+			timeToWithdrawal := utils.GetTimeToNextWithdrawal(distance)
+
+			// it normally takes two epochs to finalize
+			if timeToWithdrawal.After(utils.EpochToTime(latestEpoch + (latestEpoch - lastFinalizedEpoch))) {
+				address, err := utils.WithdrawalCredentialsToAddress(validatorPageData.WithdrawCredentials)
+				if err != nil {
+					// warning only as "N/A" will be displayed
+					logger.Warn("invalid withdrawal credentials")
+				}
+
+				// create the table data
+				tableData := make([][]interface{}, 0, 1)
+				var withdrawalCredentialsTemplate template.HTML
+				if address != nil {
+					eth1ExplorerAddr := utils.Config.Frontend.Eth1Explorer
+					withdrawalCredentialsTemplate = template.HTML(fmt.Sprintf(`<a href="%s/address/0x%x"><span class="text-muted">%s</span></a>`, eth1ExplorerAddr, address, utils.FormatAddress(address, nil, "", false, false, true)))
+				} else {
+					withdrawalCredentialsTemplate = `<span class="text-muted">N/A</span>`
+				}
+
+				var withdrawalAmont uint64
+				if isFullWithdrawal {
+					withdrawalAmont = validatorPageData.CurrentBalance
+				} else {
+					withdrawalAmont = validatorPageData.CurrentBalance - utils.Config.Chain.Config.MaxEffectiveBalance
+				}
+
+				if latestEpoch == lastWithdrawalsEpoch {
+					withdrawalAmont = 0
+				}
+				tableData = append(tableData, []interface{}{
+					template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
+					template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
+					template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimestamp(timeToWithdrawal.Unix()))),
+					withdrawalCredentialsTemplate,
+					template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(withdrawalAmont), big.NewInt(1e9)), "BOA", 6))),
+				})
+
+				validatorPageData.NextWithdrawalRow = tableData
+			}
+		}
+	}
 
 	// logger.Infof("income data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
@@ -1004,6 +1095,93 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ValidatorWithdrawals returns a validators withdrawals in json
+func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	index, err := strconv.ParseUint(vars["index"], 10, 64)
+	if err != nil {
+		logger.Errorf("error parsing validator index: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	q := r.URL.Query()
+
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": "block_slot",
+		"1": "block_slot",
+		"2": "block_slot",
+		"3": "address",
+		"4": "amount",
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = "block_slot"
+	}
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "asc" {
+		orderDir = "desc"
+	}
+
+	length := uint64(10)
+
+	withdrawalCount, _, err := db.GetValidatorWithdrawalsCount(index)
+	if err != nil {
+		logger.Errorf("error retrieving validator withdrawals count: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	withdrawals, err := db.GetValidatorWithdrawals(index, length, start, orderBy, orderDir)
+	if err != nil {
+		logger.Errorf("error retrieving validator withdrawals: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	tableData := make([][]interface{}, 0, len(withdrawals))
+
+	for _, w := range withdrawals {
+		tableData = append(tableData, []interface{}{
+			template.HTML(fmt.Sprintf("%v", utils.FormatEpoch(utils.EpochOfSlot(w.Slot)))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, false))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "BOA", 6))),
+		})
+	}
+
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    withdrawalCount,
+		RecordsFiltered: withdrawalCount,
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
 // ValidatorSlashings returns a validators slashings in json
 func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -1156,7 +1334,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msgForHashing := "\x19Ethereum Signed Message:\n" + strconv.Itoa(len(signatureWrapper.Msg)) + signatureWrapper.Msg
+	msgForHashing := "\x19Signed Message:\n" + strconv.Itoa(len(signatureWrapper.Msg)) + signatureWrapper.Msg
 	msgHash := crypto.Keccak256Hash([]byte(msgForHashing))
 
 	signatureParsed, err := hex.DecodeString(strings.Replace(signatureWrapper.Sig, "0x", "", -1))
