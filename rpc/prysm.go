@@ -894,6 +894,7 @@ func (pc *PrysmClient) parseBellatrixBlock(block *ethpb.BeaconBlockContainer) (*
 			BaseFeePerGas: binary.LittleEndian.Uint64(payload.BaseFeePerGas), // TODO, this is problematic
 			BlockHash:     payload.BlockHash,
 			Transactions:  txs,
+			Withdrawals:   nil,
 		}
 	}
 
@@ -1044,16 +1045,16 @@ func (pc *PrysmClient) parseCapellaBlock(block *ethpb.BeaconBlockContainer) (*ty
 			DepositCount: blk.Block.Body.Eth1Data.DepositCount,
 			BlockHash:    blk.Block.Body.Eth1Data.BlockHash,
 		},
-		BodyRoot:          nil,
-		ProposerSlashings: make([]*types.ProposerSlashing, len(blk.Block.Body.ProposerSlashings)),
-		AttesterSlashings: make([]*types.AttesterSlashing, len(blk.Block.Body.AttesterSlashings)),
-		Attestations:      make([]*types.Attestation, len(blk.Block.Body.Attestations)),
-		Deposits:          make([]*types.Deposit, len(blk.Block.Body.Deposits)),
-		VoluntaryExits:    make([]*types.VoluntaryExit, len(blk.Block.Body.VoluntaryExits)),
-		SyncAggregate:     nil,
-		ExecutionPayload:  nil,
-		Canonical:         block.Canonical,
-		// SignedBLSToExecutionChange: make([]*types.SignedBLSToExecutionChange, len(blk.Block.Body.BlsToExecutionChanges)),
+		BodyRoot:                   nil,
+		ProposerSlashings:          make([]*types.ProposerSlashing, len(blk.Block.Body.ProposerSlashings)),
+		AttesterSlashings:          make([]*types.AttesterSlashing, len(blk.Block.Body.AttesterSlashings)),
+		Attestations:               make([]*types.Attestation, len(blk.Block.Body.Attestations)),
+		Deposits:                   make([]*types.Deposit, len(blk.Block.Body.Deposits)),
+		VoluntaryExits:             make([]*types.VoluntaryExit, len(blk.Block.Body.VoluntaryExits)),
+		SyncAggregate:              nil,
+		ExecutionPayload:           nil,
+		Canonical:                  block.Canonical,
+		SignedBLSToExecutionChange: make([]*types.SignedBLSToExecutionChange, len(blk.Block.Body.BlsToExecutionChanges)),
 	}
 
 	// ExecutionPayload
@@ -1089,6 +1090,18 @@ func (pc *PrysmClient) parseCapellaBlock(block *ethpb.BeaconBlockContainer) (*ty
 			txs = append(txs, tx)
 		}
 
+		withdrawals := make([]*types.Withdrawals, 0, len(payload.Withdrawals))
+		for _, rawWithdrawal := range payload.Withdrawals {
+			withdraw := &types.Withdrawals{}
+			withdraw.Slot = uint64(blk.Block.Slot)
+			withdraw.BlockRoot = block.BlockRoot
+			withdraw.Index = rawWithdrawal.Index
+			withdraw.ValidatorIndex = uint64(rawWithdrawal.ValidatorIndex)
+			withdraw.Address = rawWithdrawal.Address
+			withdraw.Amount = rawWithdrawal.Amount
+			withdrawals = append(withdrawals, withdraw)
+		}
+
 		b.ExecutionPayload = &types.ExecutionPayload{
 			ParentHash:    payload.ParentHash,
 			FeeRecipient:  payload.FeeRecipient,
@@ -1104,6 +1117,7 @@ func (pc *PrysmClient) parseCapellaBlock(block *ethpb.BeaconBlockContainer) (*ty
 			BaseFeePerGas: binary.LittleEndian.Uint64(payload.BaseFeePerGas), // TODO, this is problematic
 			BlockHash:     payload.BlockHash,
 			Transactions:  txs,
+			Withdrawals:   withdrawals,
 		}
 	}
 
@@ -1238,19 +1252,17 @@ func (pc *PrysmClient) parseCapellaBlock(block *ethpb.BeaconBlockContainer) (*ty
 			Signature:      voluntaryExit.Signature,
 		}
 	}
-	/*
-		// SignedBLSToExecutionChange
-		for i, blsToExec := range blk.Block.Body.BlsToExecutionChanges {
-			b.SignedBLSToExecutionChange[i] = &types.SignedBLSToExecutionChange{
-				Message: 		types.BLSToExecutionChange{
-									Validatorindex: uint64(blsToExec.Message.ValidatorIndex),
-									BlsPubkey: blsToExec.Message.FromBlsPubkey,
-									Address: blsToExec.Message.ToExecutionAddress,
-								},
-				Signature:      blsToExec.Signature,
-			}
+	// SignedBLSToExecutionChange
+	for i, blsToExec := range blk.Block.Body.BlsToExecutionChanges {
+		b.SignedBLSToExecutionChange[i] = &types.SignedBLSToExecutionChange{
+			Message: types.BLSToExecutionChange{
+				Validatorindex: uint64(blsToExec.Message.ValidatorIndex),
+				BlsPubkey:      blsToExec.Message.FromBlsPubkey,
+				Address:        blsToExec.Message.ToExecutionAddress,
+			},
+			Signature: blsToExec.Signature,
 		}
-	*/
+	}
 	return b, nil
 }
 
