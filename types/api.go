@@ -149,3 +149,13 @@ func (e *DiscordReq) Scan(value interface{}) error {
 func (a DiscordReq) Value() (driver.Value, error) {
 	return json.Marshal(a)
 }
+
+type ApiValidatorWithdrawalResponse struct {
+	Epoch          uint64 `json:"epoch,omitempty"`
+	Slot           uint64 `json:"slot,omitempty"`
+	BlockRoot      string `json:"blockroot,omitempty"`
+	Index          uint64 `json:"withdrawalindex"`
+	ValidatorIndex uint64 `json:"validatorindex"`
+	Address        string `json:"address"`
+	Amount         uint64 `json:"amount"`
+}
