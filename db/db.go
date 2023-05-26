@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"database/sql"
+	"encoding/hex"
 	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -1345,14 +1346,23 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 	}
 	defer stmtValidatorsLastAttestationSlot.Close()
 
-	stmtWithdrawal, err := tx.Prepare(`
+	stmtWithdrawals, err := tx.Prepare(`
 		INSERT INTO blocks_withdrawals (block_slot, block_root, withdrawalindex, validatorindex, address, amount)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (block_slot, block_root, withdrawalindex) DO NOTHING`)
 	if err != nil {
 		return err
 	}
-	defer stmtWithdrawal.Close()
+	defer stmtWithdrawals.Close()
+
+	stmtBLSChange, err := tx.Prepare(`
+	INSERT INTO blocks_bls_change (block_slot, block_root, validatorindex, signature, pubkey, address)
+	VALUES ($1, $2, $3, $4, $5, $6)
+	ON CONFLICT (block_slot, block_root, validatorindex) DO NOTHING`)
+	if err != nil {
+		return err
+	}
+	defer stmtBLSChange.Close()
 
 	slots := make([]uint64, 0, len(blocks))
 	for slot := range blocks {
@@ -1494,7 +1504,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 
 			if payload := b.ExecutionPayload; payload != nil && payload.Withdrawals != nil {
 				for _, wd := range payload.Withdrawals {
-					_, err := stmtWithdrawal.Exec(wd.Slot, wd.BlockRoot, wd.Index, wd.ValidatorIndex, wd.Address, wd.Amount)
+					_, err := stmtWithdrawals.Exec(wd.Slot, wd.BlockRoot, wd.Index, wd.ValidatorIndex, wd.Address, wd.Amount)
 					if err != nil {
 						return fmt.Errorf("error executing stmtWithdrawal for block %v: %v: %v", b.Slot, wd.Index, err)
 					}
@@ -1511,6 +1521,16 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 				}
 			}
 			blockLog.WithField("duration", time.Since(t)).Tracef("stmtProposerSlashing")
+
+			n = time.Now()
+			logger.Tracef("writing bls change data")
+			for _, bls := range b.SignedBLSToExecutionChange {
+				_, err := stmtBLSChange.Exec(b.Slot, b.BlockRoot, bls.Message.Validatorindex, bls.Signature, bls.Message.BlsPubkey, bls.Message.Address)
+				if err != nil {
+					return fmt.Errorf("error executing stmtBLSChange for block %v: %w", b.Slot, err)
+				}
+			}
+			blockLog.WithField("duration", time.Since(n)).Tracef("stmtBLSChange")
 			t = time.Now()
 
 			for i, as := range b.AttesterSlashings {
@@ -1872,4 +1892,158 @@ func GetValidatorsGotSlashed(epoch uint64) ([]struct {
 		return nil, err
 	}
 	return dbResult, nil
+}
+
+func GetTotalBLSChanges() (uint64, error) {
+	var count uint64
+	err := ReaderDb.Get(&count, `
+		SELECT count(*) FROM blocks_bls_change`)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("error getting total blocks_bls_change: %w", err)
+	}
+
+	return count, nil
+}
+
+func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string) ([]*types.BLSChange, error) {
+	blsChange := []*types.BLSChange{}
+
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
+	columns := []string{"block_slot", "validatorindex"}
+	hasColumn := false
+	for _, column := range columns {
+		if orderBy == column {
+			hasColumn = true
+			break
+		}
+	}
+	if !hasColumn {
+		orderBy = "block_slot"
+	}
+
+	if query != "" {
+
+		bquery, _ := hex.DecodeString(strings.TrimPrefix(query, "0x"))
+		err := ReaderDb.Select(&blsChange, fmt.Sprintf(`
+			SELECT 
+				bls.block_slot as slot,
+				bls.validatorindex,
+				bls.signature,
+				bls.pubkey,
+				bls.address
+			FROM blocks_bls_change bls
+			INNER JOIN blocks b ON bls.block_root = b.blockroot AND b.status = '1'
+			WHERE CAST(bls.validatorindex as varchar) LIKE $3 || '%%'
+				OR pubkey LIKE $4::bytea || '%%'::bytea
+				OR CAST(block_slot as varchar) LIKE $3 || '%%'
+				OR CAST((block_slot / $5) as varchar) LIKE $3 || '%%'
+			ORDER BY bls.%s %s
+			LIMIT $1
+			OFFSET $2`, orderBy, orderDir), length, start, strings.ToLower(query), bquery, utils.Config.Chain.Config.SlotsPerEpoch)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err := ReaderDb.Select(&blsChange, fmt.Sprintf(`
+			SELECT 
+				bls.block_slot as slot,
+				bls.validatorindex,
+				bls.signature,
+				bls.pubkey,
+				bls.address
+			FROM blocks_bls_change bls
+			INNER JOIN blocks b ON bls.block_root = b.blockroot AND b.status = '1'
+			ORDER BY %s %s
+			LIMIT $1
+			OFFSET $2`, orderBy, orderDir), length, start)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return blsChange, nil
+}
+
+func GetSlotBLSChange(slot uint64) ([]*types.BLSChange, error) {
+	var change []*types.BLSChange
+
+	err := ReaderDb.Select(&change, `
+	SELECT 
+		bls.validatorindex, 
+		bls.signature, 
+		bls.pubkey, 
+		bls.address 
+	FROM blocks_bls_change bls 
+	INNER JOIN blocks b ON b.blockroot = bls.block_root AND b.status = '1'
+	WHERE block_slot = $1
+	ORDER BY bls.validatorindex`, slot)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return change, nil
+		}
+		return nil, fmt.Errorf("error getting slot blocks_bls_change: %w", err)
+	}
+
+	return change, nil
+}
+
+func GetValidatorBLSChange(validatorindex uint64) (*types.BLSChange, error) {
+	change := &types.BLSChange{}
+
+	err := ReaderDb.Get(change, `
+	SELECT 
+		bls.block_slot as slot, 
+		bls.signature, 
+		bls.pubkey, 
+		bls.address 
+	FROM blocks_bls_change bls
+	INNER JOIN blocks b ON b.blockroot = bls.block_root AND b.status = '1'
+	WHERE validatorindex = $1 
+	ORDER BY bls.block_slot`, validatorindex)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("error getting validator blocks_bls_change: %w", err)
+	}
+
+	return change, nil
+}
+
+// GetValidatorsBLSChange returns the BLS change for a list of validators
+func GetValidatorsBLSChange(validators []uint64) ([]*types.ValidatorsBLSChange, error) {
+	change := make([]*types.ValidatorsBLSChange, 0, len(validators))
+
+	err := ReaderDb.Select(&change, `	
+	SELECT
+		bls.block_slot AS slot,
+		bls.block_root,
+		bls.signature,
+		bls.pubkey,
+		bls.validatorindex,
+		bls.address,
+		d.withdrawalcredentials
+	FROM blocks_bls_change bls
+	INNER JOIN blocks b ON b.blockroot = bls.block_root AND b.status = '1'
+	LEFT JOIN validators v ON v.validatorindex = bls.validatorindex
+	LEFT JOIN (
+		SELECT ROW_NUMBER() OVER (PARTITION BY publickey ORDER BY block_slot) AS rn, withdrawalcredentials, publickey, block_root FROM blocks_deposits d
+		INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1'
+	) AS d ON d.publickey = v.pubkey AND rn = 1
+	WHERE bls.validatorindex = ANY($1)
+	ORDER BY bls.block_slot DESC
+	`, pq.Array(validators))
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("error getting validators blocks_bls_change: %w", err)
+	}
+
+	return change, nil
 }
