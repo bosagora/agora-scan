@@ -1141,7 +1141,11 @@ func getTotalWithdrawals(epoch uint64) (map[uint64]uint64, error) {
 		Amount         uint64
 	}
 
-	err := WriterDb.Select(&rows, "SELECT validatorindex, SUM(amount) AS amount FROM validator_withdrawal WHERE epoch <= $1 GROUP BY validatorindex", epoch)
+	err := WriterDb.Select(&rows, `
+		SELECT w.validatorindex, SUM(w.amount) AS amount 
+		FROM blocks_withdrawals w
+		INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1' 
+		WHERE w.block_slot/$1 <= $2 GROUP BY w.validatorindex`, utils.Config.Chain.Config.SlotsPerEpoch, epoch)
 	if err != nil {
 		return nil, err
 	}
@@ -1342,9 +1346,9 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 	defer stmtValidatorsLastAttestationSlot.Close()
 
 	stmtWithdrawal, err := tx.Prepare(`
-		INSERT INTO validator_withdrawal (withdrawalindex, epoch, slot, validatorindex, address, amount)
+		INSERT INTO blocks_withdrawals (block_slot, block_root, withdrawalindex, validatorindex, address, amount)
 		VALUES ($1, $2, $3, $4, $5, $6)
-		ON CONFLICT (withdrawalindex) DO NOTHING`)
+		ON CONFLICT (block_slot, block_root, withdrawalindex) DO NOTHING`)
 	if err != nil {
 		return err
 	}
@@ -1490,7 +1494,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 
 			if payload := b.ExecutionPayload; payload != nil && payload.Withdrawals != nil {
 				for _, wd := range payload.Withdrawals {
-					_, err := stmtWithdrawal.Exec(wd.Index, wd.Slot/utils.Config.Chain.Config.SlotsPerEpoch, wd.Slot, wd.ValidatorIndex, wd.Address, wd.Amount)
+					_, err := stmtWithdrawal.Exec(wd.Slot, wd.BlockRoot, wd.Index, wd.ValidatorIndex, wd.Address, wd.Amount)
 					if err != nil {
 						return fmt.Errorf("error executing stmtWithdrawal for block %v: %v: %v", b.Slot, wd.Index, err)
 					}
