@@ -1118,6 +1118,78 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiValidatorWithdrawals godoc
+// @Summary Get the withdrawal history of up to 100 validators for the last 100 epochs. To receive older withdrawals modify the epoch paraum
+// @Tags Validator
+// @Produce  json
+// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
+// @Param  epoch query int false "the start epoch for the withdrawal history (default: latest epoch)"
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorWithdrawalResponse}
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/validator/{indexOrPubkey}/withdrawals [get]
+func ApiValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
+
+	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), err.Error())
+		return
+	}
+
+	if len(queryIndices) == 0 {
+		sendErrorResponse(j, r.URL.String(), "no or invalid validator indicies provided")
+	}
+
+	q := r.URL.Query()
+
+	epoch, err := strconv.ParseUint(q.Get("epoch"), 10, 64)
+	if err != nil {
+		epoch = services.LatestEpoch()
+	}
+
+	// startEpoch and endEpoch are both inclusive, so substracting 99 here will result in a limit of 100 epochs
+	endEpoch := epoch - 99
+	if epoch < 99 {
+		endEpoch = 0
+	}
+
+	data, err := db.GetValidatorsWithdrawals(queryIndices, endEpoch, epoch)
+	if err != nil {
+		logger.Errorf("error retrieving withdrawals for %v route: %v", r.URL.String(), err)
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+
+	dataFormatted := make([]*types.ApiValidatorWithdrawalResponse, 0, len(data))
+	for _, w := range data {
+		dataFormatted = append(dataFormatted, &types.ApiValidatorWithdrawalResponse{
+			Epoch:          w.Slot / utils.Config.Chain.Config.SlotsPerEpoch,
+			Slot:           w.Slot,
+			Index:          w.Index,
+			ValidatorIndex: w.ValidatorIndex,
+			Amount:         w.Amount,
+			BlockRoot:      fmt.Sprintf("0x%x", w.BlockRoot),
+			Address:        fmt.Sprintf("0x%x", w.Address),
+		})
+	}
+
+	response := &types.ApiResponse{}
+	response.Status = "OK"
+
+	response.Data = dataFormatted
+
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not serialize data results")
+		return
+	}
+}
+
 // ApiValidatorAttestations godoc
 // @Summary Get all attestations during the last 10 epochs for up to 100 validators
 // @Tags Validator
@@ -2318,4 +2390,54 @@ func parseApiValidatorParam(origParam string, limit int) (indices []uint64, pubk
 		}
 	}
 	return indices, pubkeys, nil
+}
+
+func parseApiValidatorParamToIndices(origParam string, limit int) (indices []uint64, err error) {
+	var pubkeys pq.ByteaArray
+	params := strings.Split(origParam, ",")
+	if len(params) > limit {
+		return nil, fmt.Errorf("only a maximum of %d query parameters are allowed", limit)
+	}
+	for _, param := range params {
+		if strings.Contains(param, "0x") || len(param) == 96 {
+			pubkey, err := hex.DecodeString(strings.Replace(param, "0x", "", -1))
+			if err != nil {
+				return nil, fmt.Errorf("invalid validator-parameter")
+			}
+			pubkeys = append(pubkeys, pubkey)
+		} else {
+			index, err := strconv.ParseUint(param, 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("invalid validator-parameter: %v", param)
+			}
+			indices = append(indices, index)
+		}
+	}
+
+	var queryIndicesDeduped []uint64
+	queryIndicesDeduped = append(queryIndicesDeduped, indices...)
+	if len(pubkeys) != 0 {
+		indicesFromPubkeys := []uint64{}
+		err = db.ReaderDb.Select(&indicesFromPubkeys, "SELECT validatorindex FROM validators WHERE pubkey = ANY($1)", pubkeys)
+
+		if err != nil {
+			return nil, err
+		}
+
+		indices = append(indices, indicesFromPubkeys...)
+
+		m := make(map[uint64]uint64)
+		for _, x := range indices {
+			m[x] = x
+		}
+		for x := range m {
+			queryIndicesDeduped = append(queryIndicesDeduped, x)
+		}
+	}
+
+	if len(queryIndicesDeduped) == 0 {
+		return nil, fmt.Errorf("invalid validator argument, pubkey(s) did not resolve to a validator index")
+	}
+
+	return queryIndicesDeduped, nil
 }

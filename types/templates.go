@@ -120,13 +120,14 @@ type LatestState struct {
 }
 
 type Stats struct {
-	TopDepositors         *[]StatsTopDepositors
-	InvalidDepositCount   *uint64 `db:"count"`
-	UniqueValidatorCount  *uint64 `db:"count"`
-	TotalValidatorCount   *uint64 `db:"count"`
-	ActiveValidatorCount  *uint64 `db:"count"`
-	PendingValidatorCount *uint64 `db:"count"`
-	ValidatorChurnLimit   *uint64
+	TopDepositors                  *[]StatsTopDepositors
+	InvalidDepositCount            *uint64 `db:"count"`
+	UniqueValidatorCount           *uint64 `db:"count"`
+	TotalValidatorCount            *uint64 `db:"count"`
+	ActiveValidatorCount           *uint64 `db:"count"`
+	PendingValidatorCount          *uint64 `db:"count"`
+	ValidatorChurnLimit            *uint64
+	LatestValidatorWithdrawalIndex *uint64 `db:"index"`
 }
 
 type StatsTopDepositors struct {
@@ -286,6 +287,7 @@ type ValidatorPageData struct {
 	ValidatorIndex                      uint64 `db:"validatorindex"`
 	PublicKey                           []byte `db:"pubkey"`
 	WithdrawableEpoch                   uint64 `db:"withdrawableepoch"`
+	WithdrawCredentials                 []byte `db:"withdrawalcredentials"`
 	CurrentBalance                      uint64 `db:"balance"`
 	BalanceActivation                   uint64 `db:"balanceactivation"`
 	Balance7d                           uint64 `db:"balance7d"`
@@ -322,6 +324,7 @@ type ValidatorPageData struct {
 	StatusProposedCount                 uint64
 	StatusMissedCount                   uint64
 	DepositsCount                       uint64
+	WithdrawalCount                     uint64
 	SlashingsCount                      uint64
 	PendingCount                        uint64
 	SyncCount                           uint64
@@ -355,6 +358,10 @@ type ValidatorPageData struct {
 	LongestAttestationStreak            uint64
 	IsRocketpool                        bool
 	Rocketpool                          *RocketpoolValidatorPageData
+	CappellaHasHappened                 bool
+	BLSChange                           *BLSChange
+	IsWithdrawableAddress               bool
+	NextWithdrawalRow                   [][]interface{}
 }
 
 type RocketpoolValidatorPageData struct {
