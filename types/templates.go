@@ -1377,3 +1377,22 @@ type DataTableSaveStateColumns struct {
 	Visible bool                     `json:"visible"`
 	Search  DataTableSaveStateSearch `json:"search"`
 }
+
+type BLSChange struct {
+	Slot           uint64 `db:"slot" json:"slot,omitempty"`
+	BlockRoot      []byte `db:"block_rot" json:"blockroot,omitempty"`
+	Validatorindex uint64 `db:"validatorindex" json:"validatorindex,omitempty"`
+	BlsPubkey      []byte `db:"pubkey" json:"pubkey,omitempty"`
+	Address        []byte `db:"address" json:"address,omitempty"`
+	Signature      []byte `db:"signature" json:"signature,omitempty"`
+}
+
+type ValidatorsBLSChange struct {
+	Slot                     uint64 `db:"slot" json:"slot,omitempty"`
+	BlockRoot                []byte `db:"block_root" json:"blockroot,omitempty"`
+	Validatorindex           uint64 `db:"validatorindex" json:"validatorindex,omitempty"`
+	BlsPubkey                []byte `db:"pubkey" json:"pubkey,omitempty"`
+	Address                  []byte `db:"address" json:"address,omitempty"`
+	Signature                []byte `db:"signature" json:"signature,omitempty"`
+	WithdrawalCredentialsOld []byte `db:"withdrawalcredentials" json:"withdrawalcredentials,omitempty"`
+}
