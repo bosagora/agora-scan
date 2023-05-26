@@ -58,7 +58,7 @@ func NewPrysmClient(grpcEndpoint string, rpcEndpoint string, chainId *big.Int) (
 	logger.Printf("gRPC connection to backend node established")
 	client := &PrysmClient{
 		client:              chainClient,
-		endpoint: 			 rpcEndpoint,
+		endpoint:            rpcEndpoint,
 		nodeClient:          nodeClient,
 		conn:                conn,
 		assignmentsCacheMux: &sync.Mutex{},
@@ -1044,18 +1044,17 @@ func (pc *PrysmClient) parseCapellaBlock(block *ethpb.BeaconBlockContainer) (*ty
 			DepositCount: blk.Block.Body.Eth1Data.DepositCount,
 			BlockHash:    blk.Block.Body.Eth1Data.BlockHash,
 		},
-		BodyRoot : nil,
+		BodyRoot:          nil,
 		ProposerSlashings: make([]*types.ProposerSlashing, len(blk.Block.Body.ProposerSlashings)),
 		AttesterSlashings: make([]*types.AttesterSlashing, len(blk.Block.Body.AttesterSlashings)),
 		Attestations:      make([]*types.Attestation, len(blk.Block.Body.Attestations)),
 		Deposits:          make([]*types.Deposit, len(blk.Block.Body.Deposits)),
 		VoluntaryExits:    make([]*types.VoluntaryExit, len(blk.Block.Body.VoluntaryExits)),
-		SyncAggregate: nil,
-		ExecutionPayload: nil,
-		Canonical:    block.Canonical,
+		SyncAggregate:     nil,
+		ExecutionPayload:  nil,
+		Canonical:         block.Canonical,
 		// SignedBLSToExecutionChange: make([]*types.SignedBLSToExecutionChange, len(blk.Block.Body.BlsToExecutionChanges)),
 	}
-
 
 	// ExecutionPayload
 	if payload := blk.Block.Body.ExecutionPayload; payload != nil && !bytes.Equal(payload.ParentHash, make([]byte, 32)) {
@@ -1239,19 +1238,19 @@ func (pc *PrysmClient) parseCapellaBlock(block *ethpb.BeaconBlockContainer) (*ty
 			Signature:      voluntaryExit.Signature,
 		}
 	}
-/*
-	// SignedBLSToExecutionChange
-	for i, blsToExec := range blk.Block.Body.BlsToExecutionChanges {
-		b.SignedBLSToExecutionChange[i] = &types.SignedBLSToExecutionChange{
-			Message: 		types.BLSToExecutionChange{
-								Validatorindex: uint64(blsToExec.Message.ValidatorIndex),
-								BlsPubkey: blsToExec.Message.FromBlsPubkey,
-								Address: blsToExec.Message.ToExecutionAddress,
-							},
-			Signature:      blsToExec.Signature,
+	/*
+		// SignedBLSToExecutionChange
+		for i, blsToExec := range blk.Block.Body.BlsToExecutionChanges {
+			b.SignedBLSToExecutionChange[i] = &types.SignedBLSToExecutionChange{
+				Message: 		types.BLSToExecutionChange{
+									Validatorindex: uint64(blsToExec.Message.ValidatorIndex),
+									BlsPubkey: blsToExec.Message.FromBlsPubkey,
+									Address: blsToExec.Message.ToExecutionAddress,
+								},
+				Signature:      blsToExec.Signature,
+			}
 		}
-	}
- */
+	*/
 	return b, nil
 }
 
