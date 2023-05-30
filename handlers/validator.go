@@ -255,12 +255,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			COALESCE(validators.balanceactivation, 0) AS balanceactivation,
 			COALESCE(validators.balance7d, 0) AS balance7d,
 			COALESCE(validators.balance31d, 0) AS balance31d,
-			COALESCE((SELECT ARRAY_AGG(tag) FROM validator_tags WHERE publickey = validators.pubkey),'{}') AS tags
+			COALESCE((SELECT ARRAY_AGG(tag) FROM validator_tags WHERE publickey = validators.pubkey),'{}') AS tags,
+			W.totalwithdrawal
 		FROM validators
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		LEFT JOIN validator_pool ON validators.pubkey = validator_pool.publickey
 		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
 		LEFT JOIN (SELECT MAX(validatorindex)+1 FROM validator_performance) validator_performance_count(total_count) ON true
+		LEFT JOIN (SELECT validatorindex, SUM(amount) as totalwithdrawal from blocks_withdrawals group by validatorindex) as W ON W.validatorindex = validators.validatorindex
 		WHERE validators.validatorindex = $1`, index)
 
 	if err == sql.ErrNoRows {
@@ -472,7 +474,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 
 		lastDayBalance := incomeHistory[len(incomeHistory)-1].EndBalance
-		lastDayIncome := int64(validatorPageData.CurrentBalance) - lastDayBalance - int64(lastDayDepositsSum)
+		lastDayIncome := int64(validatorPageData.CurrentBalance) + int64(validatorPageData.TotalWithdrawal) - lastDayBalance - int64(lastDayDepositsSum)
 		lastDayIncomeColor := "#7cb5ec"
 		if lastDayIncome < 0 {
 			lastDayIncomeColor = "#f7a35c"
@@ -481,7 +483,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.IncomeHistoryChartData[len(validatorPageData.IncomeHistoryChartData)-1] = &types.ChartDataPoint{X: float64(utils.DayToTime(int64(currentDay)).Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(lastDayIncome) / 1000000000), Color: lastDayIncomeColor}
 	} else if len(incomeHistory) == 0 && validatorPageData.ActivationEpoch < services.LatestEpoch() {
 		lastDayBalance := int64(0)
-		lastDayIncome := int64(validatorPageData.CurrentBalance) - lastDayBalance - int64(lastDayDepositsSum)
+		lastDayIncome := int64(validatorPageData.CurrentBalance) + int64(validatorPageData.TotalWithdrawal) - lastDayBalance - int64(lastDayDepositsSum)
 		lastDayIncomeColor := "#7cb5ec"
 		if lastDayIncome < 0 {
 			lastDayIncomeColor = "#f7a35c"
