@@ -289,6 +289,7 @@ type ValidatorPageData struct {
 	WithdrawableEpoch                   uint64 `db:"withdrawableepoch"`
 	WithdrawCredentials                 []byte `db:"withdrawalcredentials"`
 	CurrentBalance                      uint64 `db:"balance"`
+	TotalWithdrawal                     uint64 `db:"totalwithdrawal"`
 	BalanceActivation                   uint64 `db:"balanceactivation"`
 	Balance7d                           uint64 `db:"balance7d"`
 	Balance31d                          uint64 `db:"balance31d"`
