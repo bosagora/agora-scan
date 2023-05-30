@@ -256,7 +256,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			COALESCE(validators.balance7d, 0) AS balance7d,
 			COALESCE(validators.balance31d, 0) AS balance31d,
 			COALESCE((SELECT ARRAY_AGG(tag) FROM validator_tags WHERE publickey = validators.pubkey),'{}') AS tags,
-			W.totalwithdrawal
+    		COALESCE(W.totalwithdrawal, 0) as totalwithdrawal
 		FROM validators
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		LEFT JOIN validator_pool ON validators.pubkey = validator_pool.publickey
