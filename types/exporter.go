@@ -174,6 +174,13 @@ type Withdrawals struct {
 	Amount         uint64 `json:"amount"`
 }
 
+type TotalWithdrawals struct {
+	Slot           uint64 `json:"slot,omitempty"`
+	ValidatorIndex uint64 `json:"validatorindex"`
+	Sum            uint64 `json:"sum"`
+	Count          uint64 `json:"count"`
+}
+
 type WithdrawalsByEpoch struct {
 	Epoch          uint64
 	ValidatorIndex uint64

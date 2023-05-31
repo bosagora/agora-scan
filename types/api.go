@@ -159,3 +159,11 @@ type ApiValidatorWithdrawalResponse struct {
 	Address        string `json:"address"`
 	Amount         uint64 `json:"amount"`
 }
+
+type ApiValidatorTotalWithdrawalResponse struct {
+	Epoch          uint64 `json:"epoch,omitempty"`
+	Slot           uint64 `json:"slot,omitempty"`
+	ValidatorIndex uint64 `json:"validatorindex"`
+	Sum            uint64 `json:"sum"`
+	Count          uint64 `json:"count"`
+}

@@ -2314,6 +2314,21 @@ func GetValidatorsWithdrawals(validators []uint64, fromEpoch uint64, toEpoch uin
 	return withdrawals, nil
 }
 
+func GetValidatorTotalWithdrawals(validators []uint64) ([]*types.TotalWithdrawals, error) {
+	var totalwithdrawals []*types.TotalWithdrawals
+	err := ReaderDb.Select(&totalwithdrawals, `
+	SELECT
+		w.validatorindex, 
+		COALESCE(MAX(w.block_slot), 0) as slot,
+		COALESCE(SUM(w.amount), 0) as sum,
+		COALESCE(count(*), 0) as count
+	FROM blocks_withdrawals w
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1' 
+	WHERE w.validatorindex = ANY($1) GROUP BY w.validatorindex
+	ORDER BY w.validatorindex`, pq.Array(validators))
+	return totalwithdrawals, err
+}
+
 func GetValidatorWithdrawalsCount(validator uint64) (count, lastWithdrawalEpoch uint64, err error) {
 
 	type dbResponse struct {
