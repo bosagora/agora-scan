@@ -1190,6 +1190,62 @@ func ApiValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ApiValidatorTotalWithdrawals godoc
+// @Summary Get the withdrawal history of up to 100 validators for the last 100 epochs. To receive older withdrawals modify the epoch paraum
+// @Tags Validator
+// @Produce  json
+// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorWithdrawalResponse}
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/validator/{indexOrPubkey}/totalwithdrawals [get]
+func ApiValidatorTotalWithdrawals(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
+
+	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), err.Error())
+		return
+	}
+
+	if len(queryIndices) == 0 {
+		sendErrorResponse(j, r.URL.String(), "no or invalid validator indicies provided")
+	}
+
+	data, err := db.GetValidatorTotalWithdrawals(queryIndices)
+	if err != nil {
+		logger.Errorf("error retrieving withdrawals for %v route: %v", r.URL.String(), err)
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+
+	dataFormatted := make([]*types.ApiValidatorTotalWithdrawalResponse, 0, len(data))
+	for _, w := range data {
+		dataFormatted = append(dataFormatted, &types.ApiValidatorTotalWithdrawalResponse{
+			Epoch:          w.Slot / utils.Config.Chain.Config.SlotsPerEpoch,
+			Slot:           w.Slot,
+			ValidatorIndex: w.ValidatorIndex,
+			Sum:            w.Sum,
+			Count:          w.Count,
+		})
+	}
+
+	response := &types.ApiResponse{}
+	response.Status = "OK"
+
+	response.Data = dataFormatted
+
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not serialize data results")
+		return
+	}
+}
+
 // ApiValidatorAttestations godoc
 // @Summary Get all attestations during the last 10 epochs for up to 100 validators
 // @Tags Validator
