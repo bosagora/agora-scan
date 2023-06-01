@@ -44,6 +44,14 @@ type EpochData struct {
 	EpochParticipationStats *ValidatorParticipation
 }
 
+// SlotData is a struct to hold slot data
+type SlotData struct {
+	Epoch      uint64
+	Slot       uint64
+	Validators []*Validator
+	Blocks     map[uint64]map[string]*Block
+}
+
 // ValidatorParticipation is a struct to hold validator participation data
 type ValidatorParticipation struct {
 	Epoch                   uint64

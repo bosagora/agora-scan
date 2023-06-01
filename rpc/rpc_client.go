@@ -10,6 +10,7 @@ import (
 type Client interface {
 	GetChainHead() (*types.ChainHead, error)
 	GetEpochData(epoch uint64) (*types.EpochData, error)
+	GetSlotData(block *types.Block) (*types.SlotData, error)
 	GetValidatorQueue() (*types.ValidatorQueue, error)
 	GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error)
 	GetBlocksBySlot(slot uint64) ([]*types.Block, error)
