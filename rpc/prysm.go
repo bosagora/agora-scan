@@ -239,25 +239,25 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 
 	// Retrieve the validator balances for the requested epoch
 	start := time.Now()
-	validatorBalances, _ := pc.getBalancesForEpoch(int64(epoch))
+	validatorBalances, _ := pc.GetBalancesForEpoch(int64(epoch))
 	logger.Printf("retrieved data for %v validator balances for epoch %v took %v", len(validatorBalances), epoch, time.Since(start))
 
 	// Retrieve the validator balances for the n-1d epoch
 	start = time.Now()
 	epoch1d := int64(epoch) - 225
-	validatorBalances1d, _ := pc.getBalancesForEpoch(epoch1d)
+	validatorBalances1d, _ := pc.GetBalancesForEpoch(epoch1d)
 	logger.Printf("retrieved data for %v validator balances for 1d epoch %v took %v", len(validatorBalances), epoch1d, time.Since(start))
 
 	// Retrieve the validator balances for the n-7d epoch
 	start = time.Now()
 	epoch7d := int64(epoch) - 225*7
-	validatorBalances7d, _ := pc.getBalancesForEpoch(epoch7d)
+	validatorBalances7d, _ := pc.GetBalancesForEpoch(epoch7d)
 	logger.Printf("retrieved data for %v validator balances for 7d epoch %v took %v", len(validatorBalances), epoch7d, time.Since(start))
 
 	// Retrieve the validator balances for the n-7d epoch
 	start = time.Now()
 	epoch31d := int64(epoch) - 225*31
-	validatorBalances31d, _ := pc.getBalancesForEpoch(epoch31d)
+	validatorBalances31d, _ := pc.GetBalancesForEpoch(epoch31d)
 	logger.Printf("retrieved data for %v validator balances for 31d epoch %v took %v", len(validatorBalances), epoch31d, time.Since(start))
 
 	data.ValidatorAssignmentes, err = pc.GetEpochAssignments(epoch)
@@ -383,7 +383,7 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	return data, nil
 }
 
-func (pc *PrysmClient) getBalancesForEpoch(epoch int64) (map[uint64]uint64, error) {
+func (pc *PrysmClient) GetBalancesForEpoch(epoch int64) (map[uint64]uint64, error) {
 
 	if epoch < 0 {
 		epoch = 0
