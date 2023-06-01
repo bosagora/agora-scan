@@ -9,6 +9,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"math/big"
 	"net/http"
@@ -393,7 +394,10 @@ func (pc *PrysmClient) getBalancesForEpoch(epoch int64) (map[uint64]uint64, erro
 	validatorBalances := make(map[uint64]uint64)
 
 	validatorBalancesResponse := &ethpb.ValidatorBalances{}
-	validatorBalancesRequest := &ethpb.ListValidatorBalancesRequest{PageSize: utils.Config.Indexer.Node.PageSize, PageToken: validatorBalancesResponse.NextPageToken, QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: eth2types.Epoch(epoch)}}
+	validatorBalancesRequest := &ethpb.ListValidatorBalancesRequest{
+		PageSize:    utils.Config.Indexer.Node.PageSize,
+		PageToken:   validatorBalancesResponse.NextPageToken,
+		QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: eth2types.Epoch(epoch)}}
 	if epoch == 0 {
 		validatorBalancesRequest.QueryFilter = &ethpb.ListValidatorBalancesRequest_Genesis{Genesis: true}
 	}
@@ -1311,6 +1315,136 @@ func (pc *PrysmClient) GetSyncCommittee(stateID string, epoch uint64) (*Standard
 		return nil, fmt.Errorf("error parsing sync_committees data for epoch %v (state: %v): %w", epoch, stateID, err)
 	}
 	return &parsedSyncCommittees.Data, nil
+}
+
+// GetSlotData will get the slot data from a Prysm client
+func (pc *PrysmClient) GetSlotData(block *types.Block) (*types.SlotData, error) {
+	wg := &sync.WaitGroup{}
+	var err error
+
+	slot := block.Slot
+	epoch := utils.EpochOfSlot(slot)
+	data := &types.SlotData{}
+	data.Epoch = epoch
+	data.Slot = slot
+
+	validatorsResp, err := pc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validators", pc.endpoint, slot))
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving validators for slot %v: %v", slot, err)
+	}
+	var parsedValidators StandardValidatorsResponse
+	err = json.Unmarshal(validatorsResp, &parsedValidators)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing epoch validators: %v", err)
+	}
+
+	slot1d := int64(slot) - 7200
+	slot7d := int64(slot) - 7200*7
+	slot31d := int64(slot) - 7200*31
+
+	var validatorBalances1d map[uint64]uint64
+	var validatorBalances7d map[uint64]uint64
+	var validatorBalances31d map[uint64]uint64
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		start := time.Now()
+		var err error
+		validatorBalances1d, err = pc.GetBalancesForSlot(slot1d)
+		if err != nil {
+			logrus.Errorf("error retrieving validator balances for slot %v (1d): %v", slot1d, err)
+			return
+		}
+		logger.Printf("retrieved data for %v validator balances for slot %v (1d) took %v", len(parsedValidators.Data), slot1d, time.Since(start))
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		start := time.Now()
+		var err error
+		validatorBalances7d, err = pc.GetBalancesForSlot(slot7d)
+		if err != nil {
+			logrus.Errorf("error retrieving validator balances for slot %v (7d): %v", slot7d, err)
+			return
+		}
+		logger.Printf("retrieved data for %v validator balances for slot %v (7d) took %v", len(parsedValidators.Data), slot7d, time.Since(start))
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		start := time.Now()
+		var err error
+		validatorBalances31d, err = pc.GetBalancesForSlot(slot31d)
+		if err != nil {
+			logrus.Errorf("error retrieving validator balances for slot %v (31d): %v", slot31d, err)
+			return
+		}
+		logger.Printf("retrieved data for %v validator balances for slot %v (31d) took %v", len(parsedValidators.Data), slot31d, time.Since(start))
+	}()
+	wg.Wait()
+
+	// Retrieve a block for the slot
+	data.Blocks = make(map[uint64]map[string]*types.Block)
+	if data.Blocks[block.Slot] == nil {
+		data.Blocks[block.Slot] = make(map[string]*types.Block)
+	}
+	data.Blocks[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
+	logger.Printf("retrieved a block for slot %v", slot)
+
+	// Retrieve the validator set for the slot
+	data.Validators = make([]*types.Validator, 0)
+
+	for _, validator := range parsedValidators.Data {
+		data.Validators = append(data.Validators, &types.Validator{
+			Index:                      uint64(validator.Index),
+			PublicKey:                  utils.MustParseHex(validator.Validator.Pubkey),
+			WithdrawalCredentials:      utils.MustParseHex(validator.Validator.WithdrawalCredentials),
+			Balance:                    uint64(validator.Balance),
+			EffectiveBalance:           uint64(validator.Validator.EffectiveBalance),
+			Slashed:                    validator.Validator.Slashed,
+			ActivationEligibilityEpoch: uint64(validator.Validator.ActivationEligibilityEpoch),
+			ActivationEpoch:            uint64(validator.Validator.ActivationEpoch),
+			ExitEpoch:                  uint64(validator.Validator.ExitEpoch),
+			WithdrawableEpoch:          uint64(validator.Validator.WithdrawableEpoch),
+			Balance1d:                  validatorBalances1d[uint64(validator.Index)],
+			Balance7d:                  validatorBalances7d[uint64(validator.Index)],
+			Balance31d:                 validatorBalances31d[uint64(validator.Index)],
+			Status:                     validator.Status,
+		})
+	}
+
+	logger.Printf("retrieved data for %v validators for slot %v", len(data.Validators), slot)
+
+	return data, nil
+}
+
+func (pc *PrysmClient) GetBalancesForSlot(slot int64) (map[uint64]uint64, error) {
+	if slot < 0 {
+		slot = 0
+	}
+
+	var err error
+
+	validatorBalances := make(map[uint64]uint64)
+
+	resp, err := pc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validator_balances", pc.endpoint, slot))
+	if err != nil {
+		return validatorBalances, err
+	}
+
+	var parsedResponse StandardValidatorBalancesResponse
+	err = json.Unmarshal(resp, &parsedResponse)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing response for validator_balances")
+	}
+
+	for _, b := range parsedResponse.Data {
+		validatorBalances[uint64(b.Index)] = uint64(b.Balance)
+	}
+
+	return validatorBalances, nil
 }
 
 func (pc *PrysmClient) get(url string) ([]byte, error) {

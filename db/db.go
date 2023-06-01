@@ -724,7 +724,7 @@ func SaveEpoch(data *types.EpochData) error {
 		return fmt.Errorf("error saving validator attestation assignments to db: %w", err)
 	}
 
-	withdrawals, err := getTotalWithdrawals(data.Epoch)
+	withdrawals, err := getTotalWithdrawalsByEpoch(data.Epoch)
 	if err != nil {
 		return fmt.Errorf("error get total withdrawals to db: %w", err)
 	}
@@ -835,6 +835,70 @@ func SaveEpoch(data *types.EpochData) error {
 	}
 
 	logger.Infof("export of epoch %v completed, took %v", data.Epoch, time.Since(start))
+	return nil
+}
+
+// SaveEpoch will save the epoch data into the database
+func SaveSlot(data *types.SlotData) error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_save_epoch").Observe(time.Since(start).Seconds())
+		logger.WithFields(logrus.Fields{"epoch": data.Epoch, "duration": time.Since(start)}).Info("completed saving epoch")
+	}()
+
+	tx, err := WriterDb.Begin()
+	if err != nil {
+		return fmt.Errorf("error starting db transactions: %w", err)
+	}
+	defer tx.Rollback()
+
+	logger.WithFields(logrus.Fields{"chainSlot": utils.TimeToSlot(uint64(time.Now().Unix())), "exportSlot": data.Slot}).Infof("starting export of slot %v", data.Slot)
+
+	logger.Infof("exporting block data")
+	err = saveBlocks(data.Blocks, tx)
+	if err != nil {
+		logger.Fatalf("error saving blocks to db: %v", err)
+		return fmt.Errorf("error saving blocks to db: %w", err)
+	}
+
+	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+100_000 {
+		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting validators because epoch is far behind head")
+	} else {
+		logger.Infof("exporting validators")
+		err = saveValidatorsInSlot(data, tx)
+		if err != nil {
+			return fmt.Errorf("error saving validators to db: %w", err)
+		}
+	}
+
+	withdrawals, err := getTotalWithdrawalsBySlot(data.Slot)
+	if err != nil {
+		return fmt.Errorf("error get total withdrawals to db: %w", err)
+	}
+
+	logger.Infof("exporting validator balance data")
+	err = saveValidatorBalances(data.Epoch, data.Validators, tx, withdrawals)
+	if err != nil {
+		return fmt.Errorf("error saving validator balances to db: %w", err)
+	}
+
+	// only export recent validator balances if the epoch is within the threshold
+	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+100_000 {
+		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting recent validator balance because epoch is far behind head")
+	} else {
+		logger.Infof("exporting recent validator balance")
+		err = saveValidatorBalancesRecent(data.Epoch, data.Validators, tx, withdrawals)
+		if err != nil {
+			return fmt.Errorf("error saving recent validator balances to db: %w", err)
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("error committing db transaction: %w", err)
+	}
+
+	logger.Infof("export of slot %v completed, took %v", data.Slot, time.Since(start))
 	return nil
 }
 
@@ -1068,6 +1132,173 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 	return nil
 }
 
+func saveValidatorsInSlot(data *types.SlotData, tx *sql.Tx) error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_save_validators").Observe(time.Since(start).Seconds())
+	}()
+
+	validators := data.Validators
+
+	validatorsByIndex := make(map[uint64]*types.Validator, len(data.Validators))
+	for _, v := range data.Validators {
+		validatorsByIndex[v.Index] = v
+	}
+	slots := make([]uint64, 0, len(data.Blocks))
+	for slot := range data.Blocks {
+		slots = append(slots, slot)
+	}
+	sort.Slice(slots, func(i, j int) bool {
+		return slots[i] < slots[j]
+	})
+	for _, slot := range slots {
+		for _, b := range data.Blocks[slot] {
+			if !b.Canonical {
+				continue
+			}
+			propVal := validatorsByIndex[b.Proposer]
+			if propVal != nil {
+				propVal.LastProposalSlot = b.Slot
+			}
+			for _, a := range b.Attestations {
+				for _, v := range a.Attesters {
+					attVal := validatorsByIndex[v]
+					if attVal != nil {
+						attVal.LastAttestationSlot = a.Data.Slot
+					}
+				}
+			}
+		}
+	}
+
+	var latestBlock uint64
+	err := WriterDb.Get(&latestBlock, "SELECT COALESCE(MAX(slot), 0) FROM blocks WHERE status = '1'")
+	if err != nil {
+		return err
+	}
+
+	thresholdSlot := latestBlock - 64
+	if latestBlock < 64 {
+		thresholdSlot = 0
+	}
+
+	latestEpoch := latestBlock / 32
+	farFutureEpoch := uint64(18446744073709551615)
+	maxSqlNumber := uint64(9223372036854775807)
+
+	for _, v := range validators {
+		if v.WithdrawableEpoch == farFutureEpoch {
+			v.WithdrawableEpoch = maxSqlNumber
+		}
+		if v.ExitEpoch == farFutureEpoch {
+			v.ExitEpoch = maxSqlNumber
+		}
+		if v.ActivationEligibilityEpoch == farFutureEpoch {
+			v.ActivationEligibilityEpoch = maxSqlNumber
+		}
+		if v.ActivationEpoch == farFutureEpoch {
+			v.ActivationEpoch = maxSqlNumber
+		}
+	}
+
+	batchSize := 4000 // max parameters: 65535
+	for b := 0; b < len(validators); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(validators) < end {
+			end = len(validators)
+		}
+
+		numArgs := 16
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*numArgs)
+		for i, v := range validators[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5, i*numArgs+6, i*numArgs+7, i*numArgs+8, i*numArgs+9, i*numArgs+10, i*numArgs+11, i*numArgs+12, i*numArgs+13, i*numArgs+14, i*numArgs+15, i*numArgs+16))
+			valueArgs = append(valueArgs, v.Index)
+			valueArgs = append(valueArgs, v.PublicKey)
+			valueArgs = append(valueArgs, v.WithdrawableEpoch)
+			valueArgs = append(valueArgs, v.WithdrawalCredentials)
+			valueArgs = append(valueArgs, v.Balance)
+			valueArgs = append(valueArgs, v.EffectiveBalance)
+			valueArgs = append(valueArgs, v.Slashed)
+			valueArgs = append(valueArgs, v.ActivationEligibilityEpoch)
+			valueArgs = append(valueArgs, v.ActivationEpoch)
+			valueArgs = append(valueArgs, v.ExitEpoch)
+			valueArgs = append(valueArgs, v.Balance1d)
+			valueArgs = append(valueArgs, v.Balance7d)
+			valueArgs = append(valueArgs, v.Balance31d)
+			valueArgs = append(valueArgs, fmt.Sprintf("%x", v.PublicKey))
+			valueArgs = append(valueArgs, v.Status)
+			valueArgs = append(valueArgs, v.LastAttestationSlot)
+		}
+		stmt := fmt.Sprintf(`
+			INSERT INTO validators (
+				validatorindex,
+				pubkey,
+				withdrawableepoch,
+				withdrawalcredentials,
+				balance,
+				effectivebalance,
+				slashed,
+				activationeligibilityepoch,
+				activationepoch,
+				exitepoch,
+				balance1d,
+				balance7d,
+				balance31d,
+				pubkeyhex,
+				status,
+				lastattestationslot
+			)
+			VALUES %[3]s
+			ON CONFLICT (validatorindex) DO UPDATE SET
+				withdrawableepoch          = EXCLUDED.withdrawableepoch,
+				balance                    = EXCLUDED.balance,
+				effectivebalance           = EXCLUDED.effectivebalance,
+				slashed                    = EXCLUDED.slashed,
+				activationeligibilityepoch = EXCLUDED.activationeligibilityepoch,
+				activationepoch            = EXCLUDED.activationepoch,
+				exitepoch                  = EXCLUDED.exitepoch,
+				balance1d                  = EXCLUDED.balance1d,
+				balance7d                  = EXCLUDED.balance7d,
+				balance31d                 = EXCLUDED.balance31d,
+				lastattestationslot        =
+					CASE
+					WHEN EXCLUDED.lastattestationslot > COALESCE(validators.lastattestationslot, 0) THEN EXCLUDED.lastattestationslot
+					ELSE validators.lastattestationslot
+					END,
+				status                     =
+					CASE
+					WHEN EXCLUDED.exitepoch <= %[1]d AND EXCLUDED.slashed THEN 'slashed'
+					WHEN EXCLUDED.exitepoch <= %[1]d THEN 'exited'
+					WHEN EXCLUDED.activationeligibilityepoch = 9223372036854775807 THEN 'deposited'
+					WHEN EXCLUDED.activationepoch > %[1]d THEN 'pending'
+					WHEN EXCLUDED.slashed AND EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'slashing_offline'
+					WHEN EXCLUDED.slashed THEN 'slashing_online'
+					WHEN EXCLUDED.exitepoch < 9223372036854775807 AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'exiting_offline'
+					WHEN EXCLUDED.exitepoch < 9223372036854775807 THEN 'exiting_online'
+					WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'active_offline'
+					ELSE 'active_online'
+					END`,
+			latestEpoch, thresholdSlot, strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return err
+		}
+
+		logger.Infof("saving validator batch %v completed", b)
+	}
+
+	s := time.Now()
+	_, err = tx.Exec("update validators set balanceactivation = (select balance from validator_balances_p where validator_balances_p.week = validators.activationepoch / 1575 and validator_balances_p.epoch = validators.activationepoch and validator_balances_p.validatorindex = validators.validatorindex) WHERE balanceactivation IS NULL;")
+	if err != nil {
+		return err
+	}
+	logger.Infof("updating validator activation epoch balance completed, took %v", time.Since(s))
+
+	return nil
+}
+
 func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint64, tx *sql.Tx) error {
 	start := time.Now()
 	defer func() {
@@ -1135,7 +1366,7 @@ func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]ui
 	return nil
 }
 
-func getTotalWithdrawals(epoch uint64) (map[uint64]uint64, error) {
+func getTotalWithdrawalsByEpoch(epoch uint64) (map[uint64]uint64, error) {
 	withdrawals := make(map[uint64]uint64)
 	var rows []struct {
 		ValidatorIndex uint64
@@ -1147,6 +1378,28 @@ func getTotalWithdrawals(epoch uint64) (map[uint64]uint64, error) {
 		FROM blocks_withdrawals w
 		INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1' 
 		WHERE w.block_slot/$1 <= $2 GROUP BY w.validatorindex`, utils.Config.Chain.Config.SlotsPerEpoch, epoch)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		withdrawals[row.ValidatorIndex] = row.Amount
+	}
+
+	return withdrawals, nil
+}
+
+func getTotalWithdrawalsBySlot(slot uint64) (map[uint64]uint64, error) {
+	withdrawals := make(map[uint64]uint64)
+	var rows []struct {
+		ValidatorIndex uint64
+		Amount         uint64
+	}
+
+	err := WriterDb.Select(&rows, `
+		SELECT w.validatorindex, SUM(w.amount) AS amount 
+		FROM blocks_withdrawals w
+		INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1' 
+		WHERE w.block_slot <= $1 GROUP BY w.validatorindex`, slot)
 	if err != nil {
 		return nil, err
 	}
