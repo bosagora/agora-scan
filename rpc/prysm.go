@@ -40,6 +40,8 @@ type PrysmClient struct {
 	signer              gtypes.Signer
 }
 
+var PrysmLatestHeadSlot uint64 = 0
+
 // NewPrysmClient is used for a new Prysm client connection
 func NewPrysmClient(grpcEndpoint string, rpcEndpoint string, chainId *big.Int) (*PrysmClient, error) {
 	dialOpts := []grpc.DialOption{
@@ -232,33 +234,78 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 
 // GetEpochData will get the epoch data from a Prysm client
 func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
+	wg := &sync.WaitGroup{}
 	var err error
 
 	data := &types.EpochData{}
 	data.Epoch = epoch
 
-	// Retrieve the validator balances for the requested epoch
-	start := time.Now()
-	validatorBalances, _ := pc.GetBalancesForEpoch(int64(epoch))
-	logger.Printf("retrieved data for %v validator balances for epoch %v took %v", len(validatorBalances), epoch, time.Since(start))
+	var lastSlot uint64
+	if PrysmLatestHeadSlot == 0 {
+		lastSlot = epoch * utils.Config.Chain.Config.SlotsPerEpoch
+	} else {
+		lastSlot = (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
+		if PrysmLatestHeadSlot < lastSlot {
+			lastSlot = PrysmLatestHeadSlot
+		}
+	}
 
-	// Retrieve the validator balances for the n-1d epoch
-	start = time.Now()
-	epoch1d := int64(epoch) - 225
-	validatorBalances1d, _ := pc.GetBalancesForEpoch(epoch1d)
-	logger.Printf("retrieved data for %v validator balances for 1d epoch %v took %v", len(validatorBalances), epoch1d, time.Since(start))
+	validatorsResp, err := pc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validators", pc.endpoint, lastSlot))
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving validators for slot %v: %v", lastSlot, err)
+	}
+	var parsedValidators StandardValidatorsResponse
+	err = json.Unmarshal(validatorsResp, &parsedValidators)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing epoch validators: %v", err)
+	}
 
-	// Retrieve the validator balances for the n-7d epoch
-	start = time.Now()
-	epoch7d := int64(epoch) - 225*7
-	validatorBalances7d, _ := pc.GetBalancesForEpoch(epoch7d)
-	logger.Printf("retrieved data for %v validator balances for 7d epoch %v took %v", len(validatorBalances), epoch7d, time.Since(start))
+	slot1d := int64(lastSlot) - 7200
+	slot7d := int64(lastSlot) - 7200*7
+	slot31d := int64(lastSlot) - 7200*31
 
-	// Retrieve the validator balances for the n-7d epoch
-	start = time.Now()
-	epoch31d := int64(epoch) - 225*31
-	validatorBalances31d, _ := pc.GetBalancesForEpoch(epoch31d)
-	logger.Printf("retrieved data for %v validator balances for 31d epoch %v took %v", len(validatorBalances), epoch31d, time.Since(start))
+	var validatorBalances1d map[uint64]uint64
+	var validatorBalances7d map[uint64]uint64
+	var validatorBalances31d map[uint64]uint64
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		start := time.Now()
+		var err error
+		validatorBalances1d, err = pc.GetBalancesForSlot(slot1d)
+		if err != nil {
+			logrus.Errorf("error retrieving validator balances for slot %v (1d): %v", slot1d, err)
+			return
+		}
+		logger.Printf("retrieved data for %v validator balances for slot %v (1d) took %v", len(parsedValidators.Data), slot1d, time.Since(start))
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		start := time.Now()
+		var err error
+		validatorBalances7d, err = pc.GetBalancesForSlot(slot7d)
+		if err != nil {
+			logrus.Errorf("error retrieving validator balances for slot %v (7d): %v", slot7d, err)
+			return
+		}
+		logger.Printf("retrieved data for %v validator balances for slot %v (7d) took %v", len(parsedValidators.Data), slot7d, time.Since(start))
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		start := time.Now()
+		var err error
+		validatorBalances31d, err = pc.GetBalancesForSlot(slot31d)
+		if err != nil {
+			logrus.Errorf("error retrieving validator balances for slot %v (31d): %v", slot31d, err)
+			return
+		}
+		logger.Printf("retrieved data for %v validator balances for slot %v (31d) took %v", len(parsedValidators.Data), slot31d, time.Since(start))
+	}()
+	wg.Wait()
 
 	data.ValidatorAssignmentes, err = pc.GetEpochAssignments(epoch)
 	if err != nil {
@@ -324,54 +371,24 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 
 	// Retrieve the validator set for the epoch
 	data.Validators = make([]*types.Validator, 0)
-	validatorResponse := &ethpb.Validators{}
-	validatorRequest := &ethpb.ListValidatorsRequest{PageToken: validatorResponse.NextPageToken, PageSize: utils.Config.Indexer.Node.PageSize, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: eth2types.Epoch(epoch)}}
-	if epoch == 0 {
-		validatorRequest.QueryFilter = &ethpb.ListValidatorsRequest_Genesis{Genesis: true}
-	}
-	for {
-		validatorRequest.PageToken = validatorResponse.NextPageToken
-		validatorResponse, err = pc.client.ListValidators(context.Background(), validatorRequest)
-		if err != nil {
-			logger.Errorf("error retrieving validator response: %v", err)
-			break
-		}
-		if validatorResponse.TotalSize == 0 {
-			break
-		}
 
-		for _, validator := range validatorResponse.ValidatorList {
-
-			balance, exists := validatorBalances[uint64(validator.Index)]
-			if !exists {
-				logger.WithField("pubkey", fmt.Sprintf("%x", validator.Validator.PublicKey)).WithField("epoch", epoch).Errorf("error retrieving validator balance")
-				continue
-			}
-
-			val := &types.Validator{
-				Index:                      uint64(validator.Index),
-				PublicKey:                  validator.Validator.PublicKey,
-				WithdrawalCredentials:      validator.Validator.WithdrawalCredentials,
-				Balance:                    balance,
-				EffectiveBalance:           validator.Validator.EffectiveBalance,
-				Slashed:                    validator.Validator.Slashed,
-				ActivationEligibilityEpoch: uint64(validator.Validator.ActivationEligibilityEpoch),
-				ActivationEpoch:            uint64(validator.Validator.ActivationEpoch),
-				ExitEpoch:                  uint64(validator.Validator.ExitEpoch),
-				WithdrawableEpoch:          uint64(validator.Validator.WithdrawableEpoch),
-			}
-
-			val.Balance1d = validatorBalances1d[uint64(validator.Index)]
-			val.Balance7d = validatorBalances7d[uint64(validator.Index)]
-			val.Balance31d = validatorBalances31d[uint64(validator.Index)]
-
-			data.Validators = append(data.Validators, val)
-
-		}
-
-		if validatorResponse.NextPageToken == "" {
-			break
-		}
+	for _, validator := range parsedValidators.Data {
+		data.Validators = append(data.Validators, &types.Validator{
+			Index:                      uint64(validator.Index),
+			PublicKey:                  utils.MustParseHex(validator.Validator.Pubkey),
+			WithdrawalCredentials:      utils.MustParseHex(validator.Validator.WithdrawalCredentials),
+			Balance:                    uint64(validator.Balance),
+			EffectiveBalance:           uint64(validator.Validator.EffectiveBalance),
+			Slashed:                    validator.Validator.Slashed,
+			ActivationEligibilityEpoch: uint64(validator.Validator.ActivationEligibilityEpoch),
+			ActivationEpoch:            uint64(validator.Validator.ActivationEpoch),
+			ExitEpoch:                  uint64(validator.Validator.ExitEpoch),
+			WithdrawableEpoch:          uint64(validator.Validator.WithdrawableEpoch),
+			Balance1d:                  validatorBalances1d[uint64(validator.Index)],
+			Balance7d:                  validatorBalances7d[uint64(validator.Index)],
+			Balance31d:                 validatorBalances31d[uint64(validator.Index)],
+			Status:                     validator.Status,
+		})
 	}
 	logger.Printf("retrieved data for %v validators for epoch %v", len(data.Validators), epoch)
 
@@ -1319,6 +1336,10 @@ func (pc *PrysmClient) GetSyncCommittee(stateID string, epoch uint64) (*Standard
 
 // GetSlotData will get the slot data from a Prysm client
 func (pc *PrysmClient) GetSlotData(block *types.Block) (*types.SlotData, error) {
+	if block.Slot > PrysmLatestHeadSlot {
+		PrysmLatestHeadSlot = block.Slot
+	}
+
 	wg := &sync.WaitGroup{}
 	var err error
 
