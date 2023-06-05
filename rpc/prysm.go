@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -264,9 +265,36 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	slot7d := int64(lastSlot) - 7200*7
 	slot31d := int64(lastSlot) - 7200*31
 
+	if slot1d < 0 {
+		slot1d = 0
+	}
+	if slot7d < 0 {
+		slot7d = 0
+	}
+	if slot31d < 0 {
+		slot31d = 0
+	}
+
 	var validatorBalances1d map[uint64]uint64
 	var validatorBalances7d map[uint64]uint64
 	var validatorBalances31d map[uint64]uint64
+	var validatorWithdrawal map[uint64]uint64
+	var validatorWithdrawal1d map[uint64]uint64
+	var validatorWithdrawal7d map[uint64]uint64
+	var validatorWithdrawal31d map[uint64]uint64
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		start := time.Now()
+		var err error
+		validatorWithdrawal, err = db.GetAllValidatorTotalWithdrawals(uint64(lastSlot))
+		if err != nil {
+			logrus.Errorf("error retrieving validator total withdrawal for slot %v : %v", lastSlot, err)
+			return
+		}
+		logger.Printf("retrieved data for %v validator balances for slot %v (1d) took %v", len(parsedValidators.Data), slot1d, time.Since(start))
+	}()
 
 	wg.Add(1)
 	go func() {
@@ -276,6 +304,11 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 		validatorBalances1d, err = pc.GetBalancesForSlot(slot1d)
 		if err != nil {
 			logrus.Errorf("error retrieving validator balances for slot %v (1d): %v", slot1d, err)
+			return
+		}
+		validatorWithdrawal1d, err = db.GetAllValidatorTotalWithdrawals(uint64(slot1d))
+		if err != nil {
+			logrus.Errorf("error retrieving validator total withdrawal for slot %v (1d): %v", slot1d, err)
 			return
 		}
 		logger.Printf("retrieved data for %v validator balances for slot %v (1d) took %v", len(parsedValidators.Data), slot1d, time.Since(start))
@@ -291,6 +324,11 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 			logrus.Errorf("error retrieving validator balances for slot %v (7d): %v", slot7d, err)
 			return
 		}
+		validatorWithdrawal7d, err = db.GetAllValidatorTotalWithdrawals(uint64(slot7d))
+		if err != nil {
+			logrus.Errorf("error retrieving validator total withdrawal for slot %v (7d): %v", slot7d, err)
+			return
+		}
 		logger.Printf("retrieved data for %v validator balances for slot %v (7d) took %v", len(parsedValidators.Data), slot7d, time.Since(start))
 	}()
 	wg.Add(1)
@@ -301,6 +339,11 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 		validatorBalances31d, err = pc.GetBalancesForSlot(slot31d)
 		if err != nil {
 			logrus.Errorf("error retrieving validator balances for slot %v (31d): %v", slot31d, err)
+			return
+		}
+		validatorWithdrawal31d, err = db.GetAllValidatorTotalWithdrawals(uint64(slot31d))
+		if err != nil {
+			logrus.Errorf("error retrieving validator total withdrawal for slot %v (31d): %v", slot31d, err)
 			return
 		}
 		logger.Printf("retrieved data for %v validator balances for slot %v (31d) took %v", len(parsedValidators.Data), slot31d, time.Since(start))
@@ -387,6 +430,10 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 			Balance1d:                  validatorBalances1d[uint64(validator.Index)],
 			Balance7d:                  validatorBalances7d[uint64(validator.Index)],
 			Balance31d:                 validatorBalances31d[uint64(validator.Index)],
+			Withdrawal:            		validatorWithdrawal[uint64(validator.Index)],
+			Withdrawal1d:          		validatorWithdrawal1d[uint64(validator.Index)],
+			Withdrawal7d:          		validatorWithdrawal7d[uint64(validator.Index)],
+			Withdrawal31d:         		validatorWithdrawal31d[uint64(validator.Index)],
 			Status:                     validator.Status,
 		})
 	}
@@ -1363,9 +1410,36 @@ func (pc *PrysmClient) GetSlotData(block *types.Block) (*types.SlotData, error) 
 	slot7d := int64(slot) - 7200*7
 	slot31d := int64(slot) - 7200*31
 
+	if slot1d < 0 {
+		slot1d = 0
+	}
+	if slot7d < 0 {
+		slot7d = 0
+	}
+	if slot31d < 0 {
+		slot31d = 0
+	}
+
 	var validatorBalances1d map[uint64]uint64
 	var validatorBalances7d map[uint64]uint64
 	var validatorBalances31d map[uint64]uint64
+	var validatorWithdrawal map[uint64]uint64
+	var validatorWithdrawal1d map[uint64]uint64
+	var validatorWithdrawal7d map[uint64]uint64
+	var validatorWithdrawal31d map[uint64]uint64
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		start := time.Now()
+		var err error
+		validatorWithdrawal, err = db.GetAllValidatorTotalWithdrawals(uint64(slot))
+		if err != nil {
+			logrus.Errorf("error retrieving validator total withdrawal for slot %v : %v", slot, err)
+			return
+		}
+		logger.Printf("retrieved data for %v validator balances for slot %v (1d) took %v", len(parsedValidators.Data), slot1d, time.Since(start))
+	}()
 
 	wg.Add(1)
 	go func() {
@@ -1375,6 +1449,11 @@ func (pc *PrysmClient) GetSlotData(block *types.Block) (*types.SlotData, error) 
 		validatorBalances1d, err = pc.GetBalancesForSlot(slot1d)
 		if err != nil {
 			logrus.Errorf("error retrieving validator balances for slot %v (1d): %v", slot1d, err)
+			return
+		}
+		validatorWithdrawal1d, err = db.GetAllValidatorTotalWithdrawals(uint64(slot1d))
+		if err != nil {
+			logrus.Errorf("error retrieving validator total withdrawal for slot %v (1d): %v", slot1d, err)
 			return
 		}
 		logger.Printf("retrieved data for %v validator balances for slot %v (1d) took %v", len(parsedValidators.Data), slot1d, time.Since(start))
@@ -1390,6 +1469,11 @@ func (pc *PrysmClient) GetSlotData(block *types.Block) (*types.SlotData, error) 
 			logrus.Errorf("error retrieving validator balances for slot %v (7d): %v", slot7d, err)
 			return
 		}
+		validatorWithdrawal7d, err = db.GetAllValidatorTotalWithdrawals(uint64(slot7d))
+		if err != nil {
+			logrus.Errorf("error retrieving validator total withdrawal for slot %v (7d): %v", slot7d, err)
+			return
+		}
 		logger.Printf("retrieved data for %v validator balances for slot %v (7d) took %v", len(parsedValidators.Data), slot7d, time.Since(start))
 	}()
 	wg.Add(1)
@@ -1400,6 +1484,11 @@ func (pc *PrysmClient) GetSlotData(block *types.Block) (*types.SlotData, error) 
 		validatorBalances31d, err = pc.GetBalancesForSlot(slot31d)
 		if err != nil {
 			logrus.Errorf("error retrieving validator balances for slot %v (31d): %v", slot31d, err)
+			return
+		}
+		validatorWithdrawal31d, err = db.GetAllValidatorTotalWithdrawals(uint64(slot31d))
+		if err != nil {
+			logrus.Errorf("error retrieving validator total withdrawal for slot %v (31d): %v", slot31d, err)
 			return
 		}
 		logger.Printf("retrieved data for %v validator balances for slot %v (31d) took %v", len(parsedValidators.Data), slot31d, time.Since(start))
@@ -1432,6 +1521,10 @@ func (pc *PrysmClient) GetSlotData(block *types.Block) (*types.SlotData, error) 
 			Balance1d:                  validatorBalances1d[uint64(validator.Index)],
 			Balance7d:                  validatorBalances7d[uint64(validator.Index)],
 			Balance31d:                 validatorBalances31d[uint64(validator.Index)],
+			Withdrawal:            		validatorWithdrawal[uint64(validator.Index)],
+			Withdrawal1d:          		validatorWithdrawal1d[uint64(validator.Index)],
+			Withdrawal7d:          		validatorWithdrawal7d[uint64(validator.Index)],
+			Withdrawal31d:         		validatorWithdrawal31d[uint64(validator.Index)],
 			Status:                     validator.Status,
 		})
 	}
