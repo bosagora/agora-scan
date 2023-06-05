@@ -1042,11 +1042,11 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 			end = len(validators)
 		}
 
-		numArgs := 16
+		numArgs := 20
 		valueStrings := make([]string, 0, batchSize)
 		valueArgs := make([]interface{}, 0, batchSize*numArgs)
 		for i, v := range validators[start:end] {
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5, i*numArgs+6, i*numArgs+7, i*numArgs+8, i*numArgs+9, i*numArgs+10, i*numArgs+11, i*numArgs+12, i*numArgs+13, i*numArgs+14, i*numArgs+15, i*numArgs+16))
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5, i*numArgs+6, i*numArgs+7, i*numArgs+8, i*numArgs+9, i*numArgs+10, i*numArgs+11, i*numArgs+12, i*numArgs+13, i*numArgs+14, i*numArgs+15, i*numArgs+16, i*numArgs+17, i*numArgs+18, i*numArgs+19, i*numArgs+20))
 			valueArgs = append(valueArgs, v.Index)
 			valueArgs = append(valueArgs, v.PublicKey)
 			valueArgs = append(valueArgs, v.WithdrawableEpoch)
@@ -1060,6 +1060,10 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 			valueArgs = append(valueArgs, v.Balance1d)
 			valueArgs = append(valueArgs, v.Balance7d)
 			valueArgs = append(valueArgs, v.Balance31d)
+			valueArgs = append(valueArgs, v.Withdrawal)
+			valueArgs = append(valueArgs, v.Withdrawal1d)
+			valueArgs = append(valueArgs, v.Withdrawal7d)
+			valueArgs = append(valueArgs, v.Withdrawal31d)
 			valueArgs = append(valueArgs, fmt.Sprintf("%x", v.PublicKey))
 			valueArgs = append(valueArgs, v.Status)
 			valueArgs = append(valueArgs, v.LastAttestationSlot)
@@ -1079,6 +1083,10 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 				balance1d,
 				balance7d,
 				balance31d,
+				withdrawal,
+				withdrawal1d,
+				withdrawal7d,
+				withdrawal31d,
 				pubkeyhex,
 				status,
 				lastattestationslot
@@ -1095,6 +1103,10 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 				balance1d                  = EXCLUDED.balance1d,
 				balance7d                  = EXCLUDED.balance7d,
 				balance31d                 = EXCLUDED.balance31d,
+				withdrawal                 = EXCLUDED.withdrawal,
+				withdrawal1d               = EXCLUDED.withdrawal1d,
+				withdrawal7d               = EXCLUDED.withdrawal7d,
+				withdrawal31d              = EXCLUDED.withdrawal31d,
 				lastattestationslot        =
 					CASE
 					WHEN EXCLUDED.lastattestationslot > COALESCE(validators.lastattestationslot, 0) THEN EXCLUDED.lastattestationslot
@@ -1209,11 +1221,11 @@ func saveValidatorsInSlot(data *types.SlotData, tx *sql.Tx) error {
 			end = len(validators)
 		}
 
-		numArgs := 16
+		numArgs := 20
 		valueStrings := make([]string, 0, batchSize)
 		valueArgs := make([]interface{}, 0, batchSize*numArgs)
 		for i, v := range validators[start:end] {
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5, i*numArgs+6, i*numArgs+7, i*numArgs+8, i*numArgs+9, i*numArgs+10, i*numArgs+11, i*numArgs+12, i*numArgs+13, i*numArgs+14, i*numArgs+15, i*numArgs+16))
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5, i*numArgs+6, i*numArgs+7, i*numArgs+8, i*numArgs+9, i*numArgs+10, i*numArgs+11, i*numArgs+12, i*numArgs+13, i*numArgs+14, i*numArgs+15, i*numArgs+16, i*numArgs+17, i*numArgs+18, i*numArgs+19, i*numArgs+20))
 			valueArgs = append(valueArgs, v.Index)
 			valueArgs = append(valueArgs, v.PublicKey)
 			valueArgs = append(valueArgs, v.WithdrawableEpoch)
@@ -1227,6 +1239,10 @@ func saveValidatorsInSlot(data *types.SlotData, tx *sql.Tx) error {
 			valueArgs = append(valueArgs, v.Balance1d)
 			valueArgs = append(valueArgs, v.Balance7d)
 			valueArgs = append(valueArgs, v.Balance31d)
+			valueArgs = append(valueArgs, v.Withdrawal)
+			valueArgs = append(valueArgs, v.Withdrawal1d)
+			valueArgs = append(valueArgs, v.Withdrawal7d)
+			valueArgs = append(valueArgs, v.Withdrawal31d)
 			valueArgs = append(valueArgs, fmt.Sprintf("%x", v.PublicKey))
 			valueArgs = append(valueArgs, v.Status)
 			valueArgs = append(valueArgs, v.LastAttestationSlot)
@@ -1246,6 +1262,10 @@ func saveValidatorsInSlot(data *types.SlotData, tx *sql.Tx) error {
 				balance1d,
 				balance7d,
 				balance31d,
+				withdrawal,
+				withdrawal1d,
+				withdrawal7d,
+				withdrawal31d,
 				pubkeyhex,
 				status,
 				lastattestationslot
@@ -1262,6 +1282,10 @@ func saveValidatorsInSlot(data *types.SlotData, tx *sql.Tx) error {
 				balance1d                  = EXCLUDED.balance1d,
 				balance7d                  = EXCLUDED.balance7d,
 				balance31d                 = EXCLUDED.balance31d,
+				withdrawal                 = EXCLUDED.withdrawal,
+				withdrawal1d               = EXCLUDED.withdrawal1d,
+				withdrawal7d               = EXCLUDED.withdrawal7d,
+				withdrawal31d              = EXCLUDED.withdrawal31d,
 				lastattestationslot        =
 					CASE
 					WHEN EXCLUDED.lastattestationslot > COALESCE(validators.lastattestationslot, 0) THEN EXCLUDED.lastattestationslot
@@ -2567,7 +2591,7 @@ func GetValidatorsWithdrawals(validators []uint64, fromEpoch uint64, toEpoch uin
 	return withdrawals, nil
 }
 
-func GetValidatorTotalWithdrawals(validators []uint64) ([]*types.TotalWithdrawals, error) {
+func GetValidatorTotalWithdrawals(validators []uint64, slot uint64) ([]*types.TotalWithdrawals, error) {
 	var totalwithdrawals []*types.TotalWithdrawals
 	err := ReaderDb.Select(&totalwithdrawals, `
 	SELECT
@@ -2577,8 +2601,10 @@ func GetValidatorTotalWithdrawals(validators []uint64) ([]*types.TotalWithdrawal
 		COALESCE(count(*), 0) as count
 	FROM blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1' 
-	WHERE w.validatorindex = ANY($1) GROUP BY w.validatorindex
-	ORDER BY w.validatorindex`, pq.Array(validators))
+	WHERE w.validatorindex = ANY($1)
+	AND w.block_slot <= $2
+	GROUP BY w.validatorindex
+	ORDER BY w.validatorindex`, pq.Array(validators), slot)
 	return totalwithdrawals, err
 }
 
@@ -2629,4 +2655,25 @@ func GetValidatorsWithdrawalsByEpoch(validator []uint64, startEpoch uint64, endE
 		return nil, fmt.Errorf("error getting blocks_withdrawals for validator: %d: %w", validator, err)
 	}
 	return withdrawals, nil
+}
+
+func GetAllValidatorTotalWithdrawals(slot uint64) (map[uint64]uint64, error) {
+	allValidatorBalances := make(map[uint64]uint64)
+	var totalwithdrawals []*types.TotalWithdrawals
+	err := ReaderDb.Select(&totalwithdrawals, `
+	SELECT
+		w.validatorindex, 
+		COALESCE(MAX(w.block_slot), 0) as slot,
+		COALESCE(SUM(w.amount), 0) as sum,
+		COALESCE(count(*), 0) as count
+	FROM blocks_withdrawals w
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1' 
+	AND w.block_slot <= $1
+	GROUP BY w.validatorindex
+	ORDER BY w.validatorindex`, slot)
+
+	for _, w := range totalwithdrawals {
+		allValidatorBalances[w.ValidatorIndex] = w.Sum;
+	}
+	return allValidatorBalances, err
 }

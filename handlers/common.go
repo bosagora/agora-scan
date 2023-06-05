@@ -60,6 +60,10 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			   COALESCE(balance1d, 0) AS balance1d, 
 			   COALESCE(balance7d, 0) AS balance7d, 
 			   COALESCE(balance31d , 0) AS balance31d,
+			   COALESCE(withdrawal, 0) AS withdrawal, 
+			   COALESCE(withdrawal1d, 0) AS withdrawal1d, 
+			   COALESCE(withdrawal7d, 0) AS withdrawal7d,
+			   COALESCE(withdrawal31d, 0) AS withdrawal31d,
        			activationepoch,
        			pubkey
 		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
@@ -124,6 +128,10 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		if int64(balance.ActivationEpoch) > lastMonthEpoch {
 			balance.Balance31d = balance.BalanceActivation
 		}
+		balance.Balance += balance.Withdrawal
+		balance.Balance1d += balance.Withdrawal1d
+		balance.Balance7d += balance.Withdrawal7d
+		balance.Balance31d += balance.Withdrawal31d
 
 		earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)
 		earningsLastDay += int64(balance.Balance) - int64(balance.Balance1d)

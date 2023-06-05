@@ -1216,7 +1216,14 @@ func ApiValidatorTotalWithdrawals(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(j, r.URL.String(), "no or invalid validator indicies provided")
 	}
 
-	data, err := db.GetValidatorTotalWithdrawals(queryIndices)
+	q := r.URL.Query()
+
+	slot, err := strconv.ParseUint(q.Get("slot"), 10, 64)
+	if err != nil {
+		slot = services.LatestSlot()
+	}
+
+	data, err := db.GetValidatorTotalWithdrawals(queryIndices, slot)
 	if err != nil {
 		logger.Errorf("error retrieving withdrawals for %v route: %v", r.URL.String(), err)
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")

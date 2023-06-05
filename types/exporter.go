@@ -85,6 +85,11 @@ type Validator struct {
 	Balance31d        uint64 `db:"balance31d"`
 	Status            string `db:"status"`
 
+	Withdrawal    uint64 `db:"withdrawal"`
+	Withdrawal1d  uint64 `db:"withdrawal1d"`
+	Withdrawal7d  uint64 `db:"withdrawal7d"`
+	Withdrawal31d uint64 `db:"withdrawal31d"`
+
 	LastAttestationSlot uint64 `db:"lastattestationslot"`
 	LastProposalSlot    uint64 `db:"lastproposalslot"`
 }
