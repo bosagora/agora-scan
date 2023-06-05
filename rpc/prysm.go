@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
 
@@ -375,6 +376,31 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	}
 	logger.Printf("retrieved %v blocks for epoch %v", len(data.Blocks), epoch)
 
+	slots := make([]uint64, 0, len(data.Blocks))
+	for slot := range data.Blocks {
+		slots = append(slots, slot)
+	}
+	sort.Slice(slots, func(i, j int) bool {
+		return slots[i] < slots[j]
+	})
+
+	for _, slot := range slots {
+		if slot > PrysmLatestHeadSlot {
+			for _, b := range data.Blocks[slot] {
+				if payload := b.ExecutionPayload; payload != nil && payload.Withdrawals != nil {
+					for _, wd := range payload.Withdrawals {
+						value, exists := validatorWithdrawal[wd.ValidatorIndex]
+						if exists {
+							validatorWithdrawal[wd.ValidatorIndex] = value + wd.Amount
+						} else {
+							validatorWithdrawal[wd.ValidatorIndex] = wd.Amount
+						}
+					}
+				}
+			}
+		}
+	}
+
 	// Fill up missed and scheduled blocks
 	for slot, proposer := range data.ValidatorAssignmentes.ProposerAssignments {
 		_, found := data.Blocks[slot]
@@ -430,10 +456,10 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 			Balance1d:                  validatorBalances1d[uint64(validator.Index)],
 			Balance7d:                  validatorBalances7d[uint64(validator.Index)],
 			Balance31d:                 validatorBalances31d[uint64(validator.Index)],
-			Withdrawal:            		validatorWithdrawal[uint64(validator.Index)],
-			Withdrawal1d:          		validatorWithdrawal1d[uint64(validator.Index)],
-			Withdrawal7d:          		validatorWithdrawal7d[uint64(validator.Index)],
-			Withdrawal31d:         		validatorWithdrawal31d[uint64(validator.Index)],
+			Withdrawal:                 validatorWithdrawal[uint64(validator.Index)],
+			Withdrawal1d:               validatorWithdrawal1d[uint64(validator.Index)],
+			Withdrawal7d:               validatorWithdrawal7d[uint64(validator.Index)],
+			Withdrawal31d:              validatorWithdrawal31d[uint64(validator.Index)],
 			Status:                     validator.Status,
 		})
 	}
@@ -1503,6 +1529,21 @@ func (pc *PrysmClient) GetSlotData(block *types.Block) (*types.SlotData, error) 
 	data.Blocks[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
 	logger.Printf("retrieved a block for slot %v", slot)
 
+	if block.Slot > PrysmLatestHeadSlot {
+		for _, b := range data.Blocks[block.Slot] {
+			if payload := b.ExecutionPayload; payload != nil && payload.Withdrawals != nil {
+				for _, wd := range payload.Withdrawals {
+					value, exists := validatorWithdrawal[wd.ValidatorIndex]
+					if exists {
+						validatorWithdrawal[wd.ValidatorIndex] = value + wd.Amount
+					} else {
+						validatorWithdrawal[wd.ValidatorIndex] = wd.Amount
+					}
+				}
+			}
+		}
+	}
+
 	// Retrieve the validator set for the slot
 	data.Validators = make([]*types.Validator, 0)
 
@@ -1521,10 +1562,10 @@ func (pc *PrysmClient) GetSlotData(block *types.Block) (*types.SlotData, error) 
 			Balance1d:                  validatorBalances1d[uint64(validator.Index)],
 			Balance7d:                  validatorBalances7d[uint64(validator.Index)],
 			Balance31d:                 validatorBalances31d[uint64(validator.Index)],
-			Withdrawal:            		validatorWithdrawal[uint64(validator.Index)],
-			Withdrawal1d:          		validatorWithdrawal1d[uint64(validator.Index)],
-			Withdrawal7d:          		validatorWithdrawal7d[uint64(validator.Index)],
-			Withdrawal31d:         		validatorWithdrawal31d[uint64(validator.Index)],
+			Withdrawal:                 validatorWithdrawal[uint64(validator.Index)],
+			Withdrawal1d:               validatorWithdrawal1d[uint64(validator.Index)],
+			Withdrawal7d:               validatorWithdrawal7d[uint64(validator.Index)],
+			Withdrawal31d:              validatorWithdrawal31d[uint64(validator.Index)],
 			Status:                     validator.Status,
 		})
 	}
