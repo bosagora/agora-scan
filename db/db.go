@@ -724,13 +724,8 @@ func SaveEpoch(data *types.EpochData) error {
 		return fmt.Errorf("error saving validator attestation assignments to db: %w", err)
 	}
 
-	withdrawals, err := getTotalWithdrawalsByEpoch(data.Epoch)
-	if err != nil {
-		return fmt.Errorf("error get total withdrawals to db: %w", err)
-	}
-
 	logger.Infof("exporting validator balance data")
-	err = saveValidatorBalances(data.Epoch, data.Validators, tx, withdrawals)
+	err = saveValidatorBalances(data.Epoch, data.Validators, tx)
 	if err != nil {
 		return fmt.Errorf("error saving validator balances to db: %w", err)
 	}
@@ -740,7 +735,7 @@ func SaveEpoch(data *types.EpochData) error {
 		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting recent validator balance because epoch is far behind head")
 	} else {
 		logger.Infof("exporting recent validator balance")
-		err = saveValidatorBalancesRecent(data.Epoch, data.Validators, tx, withdrawals)
+		err = saveValidatorBalancesRecent(data.Epoch, data.Validators, tx)
 		if err != nil {
 			return fmt.Errorf("error saving recent validator balances to db: %w", err)
 		}
@@ -871,13 +866,8 @@ func SaveSlot(data *types.SlotData) error {
 		}
 	}
 
-	withdrawals, err := getTotalWithdrawalsBySlot(data.Slot)
-	if err != nil {
-		return fmt.Errorf("error get total withdrawals to db: %w", err)
-	}
-
 	logger.Infof("exporting validator balance data")
-	err = saveValidatorBalances(data.Epoch, data.Validators, tx, withdrawals)
+	err = saveValidatorBalances(data.Epoch, data.Validators, tx)
 	if err != nil {
 		return fmt.Errorf("error saving validator balances to db: %w", err)
 	}
@@ -887,7 +877,7 @@ func SaveSlot(data *types.SlotData) error {
 		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting recent validator balance because epoch is far behind head")
 	} else {
 		logger.Infof("exporting recent validator balance")
-		err = saveValidatorBalancesRecent(data.Epoch, data.Validators, tx, withdrawals)
+		err = saveValidatorBalancesRecent(data.Epoch, data.Validators, tx)
 		if err != nil {
 			return fmt.Errorf("error saving recent validator balances to db: %w", err)
 		}
@@ -1434,7 +1424,7 @@ func getTotalWithdrawalsBySlot(slot uint64) (map[uint64]uint64, error) {
 	return withdrawals, nil
 }
 
-func saveValidatorBalances(epoch uint64, validators []*types.Validator, tx *sql.Tx, withdrawals map[uint64]uint64) error {
+func saveValidatorBalances(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_save_validator_balances").Observe(time.Since(start).Seconds())
@@ -1458,14 +1448,8 @@ func saveValidatorBalances(epoch uint64, validators []*types.Validator, tx *sql.
 			valueArgs = append(valueArgs, v.Balance)
 			valueArgs = append(valueArgs, v.EffectiveBalance)
 			valueArgs = append(valueArgs, epoch/1575)
-			val, exists := withdrawals[v.Index]
-			if exists {
-				valueArgs = append(valueArgs, val)
-				valueArgs = append(valueArgs, v.Balance+val)
-			} else {
-				valueArgs = append(valueArgs, 0)
-				valueArgs = append(valueArgs, v.Balance)
-			}
+			valueArgs = append(valueArgs, v.Withdrawal)
+			valueArgs = append(valueArgs, v.Balance+v.Withdrawal)
 		}
 		stmt := fmt.Sprintf(`
 		INSERT INTO validator_balances_p (epoch, validatorindex, balance, effectivebalance, week, withdrawal, total_balance)
@@ -1484,7 +1468,7 @@ func saveValidatorBalances(epoch uint64, validators []*types.Validator, tx *sql.
 	return nil
 }
 
-func saveValidatorBalancesRecent(epoch uint64, validators []*types.Validator, tx *sql.Tx, withdrawals map[uint64]uint64) error {
+func saveValidatorBalancesRecent(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_save_validator_balances_recent").Observe(time.Since(start).Seconds())
@@ -1506,14 +1490,8 @@ func saveValidatorBalancesRecent(epoch uint64, validators []*types.Validator, tx
 			valueArgs = append(valueArgs, epoch)
 			valueArgs = append(valueArgs, v.Index)
 			valueArgs = append(valueArgs, v.Balance)
-			val, exists := withdrawals[v.Index]
-			if exists {
-				valueArgs = append(valueArgs, val)
-				valueArgs = append(valueArgs, v.Balance+val)
-			} else {
-				valueArgs = append(valueArgs, 0)
-				valueArgs = append(valueArgs, v.Balance)
-			}
+			valueArgs = append(valueArgs, v.Withdrawal)
+			valueArgs = append(valueArgs, v.Balance+v.Withdrawal)
 		}
 		stmt := fmt.Sprintf(`
 			INSERT INTO validator_balances_recent (epoch, validatorindex, balance, withdrawal, total_balance)
@@ -2673,7 +2651,7 @@ func GetAllValidatorTotalWithdrawals(slot uint64) (map[uint64]uint64, error) {
 	ORDER BY w.validatorindex`, slot)
 
 	for _, w := range totalwithdrawals {
-		allValidatorBalances[w.ValidatorIndex] = w.Sum;
+		allValidatorBalances[w.ValidatorIndex] = w.Sum
 	}
 	return allValidatorBalances, err
 }
