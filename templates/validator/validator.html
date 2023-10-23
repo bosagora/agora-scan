@@ -111,13 +111,13 @@
               {{ template "validatorNetworkStatsTable" . }}
             {{ end }}
             {{ if $pending }}
-              {{ template "validatorIncomeTable" $ }}
+              {{ template "validatorNetworkStatsTable" . }}
             {{ end }}
             {{ if $validating }}
-              {{ template "validatorIncomeTable" $ }}
+              {{ template "validatorNetworkStatsTable" . }}
             {{ end }}
             {{ if $exited }}
-              {{ template "validatorIncomeTable" $ }}
+              {{ template "validatorNetworkStatsTable" . }}
             {{ end }}
           </div>
         </div>

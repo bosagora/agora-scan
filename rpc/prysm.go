@@ -276,13 +276,13 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 		slot31d = 0
 	}
 
-	var validatorBalances1d map[uint64]uint64
-	var validatorBalances7d map[uint64]uint64
-	var validatorBalances31d map[uint64]uint64
+	//var validatorBalances1d map[uint64]uint64
+	//var validatorBalances7d map[uint64]uint64
+	//var validatorBalances31d map[uint64]uint64
 	var validatorWithdrawal map[uint64]uint64
-	var validatorWithdrawal1d map[uint64]uint64
-	var validatorWithdrawal7d map[uint64]uint64
-	var validatorWithdrawal31d map[uint64]uint64
+	//var validatorWithdrawal1d map[uint64]uint64
+	//var validatorWithdrawal7d map[uint64]uint64
+	//var validatorWithdrawal31d map[uint64]uint64
 
 	wg.Add(1)
 	go func() {
@@ -296,7 +296,7 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 		}
 		logger.Printf("retrieved data for %v validator balances for slot %v (1d) took %v", len(parsedValidators.Data), slot1d, time.Since(start))
 	}()
-
+/*
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -349,7 +349,8 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 		}
 		logger.Printf("retrieved data for %v validator balances for slot %v (31d) took %v", len(parsedValidators.Data), slot31d, time.Since(start))
 	}()
-	wg.Wait()
+*/
+ 	wg.Wait()
 
 	data.ValidatorAssignmentes, err = pc.GetEpochAssignments(epoch)
 	if err != nil {
@@ -453,13 +454,13 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 			ActivationEpoch:            uint64(validator.Validator.ActivationEpoch),
 			ExitEpoch:                  uint64(validator.Validator.ExitEpoch),
 			WithdrawableEpoch:          uint64(validator.Validator.WithdrawableEpoch),
-			Balance1d:                  validatorBalances1d[uint64(validator.Index)],
-			Balance7d:                  validatorBalances7d[uint64(validator.Index)],
-			Balance31d:                 validatorBalances31d[uint64(validator.Index)],
+			Balance1d:                  0, //validatorBalances1d[uint64(validator.Index)],
+			Balance7d:                  0, //validatorBalances7d[uint64(validator.Index)],
+			Balance31d:                 0, //validatorBalances31d[uint64(validator.Index)],
 			Withdrawal:                 validatorWithdrawal[uint64(validator.Index)],
-			Withdrawal1d:               validatorWithdrawal1d[uint64(validator.Index)],
-			Withdrawal7d:               validatorWithdrawal7d[uint64(validator.Index)],
-			Withdrawal31d:              validatorWithdrawal31d[uint64(validator.Index)],
+			Withdrawal1d:               0, //validatorWithdrawal1d[uint64(validator.Index)],
+			Withdrawal7d:               0, //validatorWithdrawal7d[uint64(validator.Index)],
+			Withdrawal31d:              0, //validatorWithdrawal31d[uint64(validator.Index)],
 			Status:                     validator.Status,
 		})
 	}
@@ -1446,13 +1447,13 @@ func (pc *PrysmClient) GetSlotData(block *types.Block) (*types.SlotData, error) 
 		slot31d = 0
 	}
 
-	var validatorBalances1d map[uint64]uint64
-	var validatorBalances7d map[uint64]uint64
-	var validatorBalances31d map[uint64]uint64
+	//var validatorBalances1d map[uint64]uint64
+	//var validatorBalances7d map[uint64]uint64
+	//var validatorBalances31d map[uint64]uint64
 	var validatorWithdrawal map[uint64]uint64
-	var validatorWithdrawal1d map[uint64]uint64
-	var validatorWithdrawal7d map[uint64]uint64
-	var validatorWithdrawal31d map[uint64]uint64
+	//var validatorWithdrawal1d map[uint64]uint64
+	//var validatorWithdrawal7d map[uint64]uint64
+	//var validatorWithdrawal31d map[uint64]uint64
 
 	wg.Add(1)
 	go func() {
@@ -1466,7 +1467,7 @@ func (pc *PrysmClient) GetSlotData(block *types.Block) (*types.SlotData, error) 
 		}
 		logger.Printf("retrieved data for %v validator balances for slot %v (1d) took %v", len(parsedValidators.Data), slot1d, time.Since(start))
 	}()
-
+/*
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -1502,6 +1503,7 @@ func (pc *PrysmClient) GetSlotData(block *types.Block) (*types.SlotData, error) 
 		}
 		logger.Printf("retrieved data for %v validator balances for slot %v (7d) took %v", len(parsedValidators.Data), slot7d, time.Since(start))
 	}()
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -1519,6 +1521,7 @@ func (pc *PrysmClient) GetSlotData(block *types.Block) (*types.SlotData, error) 
 		}
 		logger.Printf("retrieved data for %v validator balances for slot %v (31d) took %v", len(parsedValidators.Data), slot31d, time.Since(start))
 	}()
+*/
 	wg.Wait()
 
 	// Retrieve a block for the slot
@@ -1559,13 +1562,13 @@ func (pc *PrysmClient) GetSlotData(block *types.Block) (*types.SlotData, error) 
 			ActivationEpoch:            uint64(validator.Validator.ActivationEpoch),
 			ExitEpoch:                  uint64(validator.Validator.ExitEpoch),
 			WithdrawableEpoch:          uint64(validator.Validator.WithdrawableEpoch),
-			Balance1d:                  validatorBalances1d[uint64(validator.Index)],
-			Balance7d:                  validatorBalances7d[uint64(validator.Index)],
-			Balance31d:                 validatorBalances31d[uint64(validator.Index)],
+			Balance1d:                  0, //validatorBalances1d[uint64(validator.Index)],
+			Balance7d:                  0, //validatorBalances7d[uint64(validator.Index)],
+			Balance31d:                 0, //validatorBalances31d[uint64(validator.Index)],
 			Withdrawal:                 validatorWithdrawal[uint64(validator.Index)],
-			Withdrawal1d:               validatorWithdrawal1d[uint64(validator.Index)],
-			Withdrawal7d:               validatorWithdrawal7d[uint64(validator.Index)],
-			Withdrawal31d:              validatorWithdrawal31d[uint64(validator.Index)],
+			Withdrawal1d:               0, //validatorWithdrawal1d[uint64(validator.Index)],
+			Withdrawal7d:               0, //validatorWithdrawal7d[uint64(validator.Index)],
+			Withdrawal31d:              0, //validatorWithdrawal31d[uint64(validator.Index)],
 			Status:                     validator.Status,
 		})
 	}
