@@ -225,18 +225,10 @@ func Start(client rpc.Client) error {
 			// Do a full check on any epoch transition or after during the first run
 			if utils.EpochOfSlot(lastExportedSlot) != utils.EpochOfSlot(block.Slot) || utils.EpochOfSlot(block.Slot) == 0 {
 				doFullCheck(client)
-			} else {
-				data, getError := client.GetSlotData(block)
-				if getError != nil {
-					logger.Errorf("error retrieving slot data: %v", getError)
-					err := db.SaveBlock(block)
-					if err != nil {
-						logger.Errorf("error saving block: %v", err)
-					}
-				}
-				saveError := db.SaveSlot(data)
-				if saveError != nil {
-					logger.Errorf("error saving block: %v", saveError)
+			} else { // else just save the in epoch block
+				err := db.SaveBlock(block)
+				if err != nil {
+					logger.Errorf("error saving block: %v", err)
 				}
 			}
 			lastExportedSlot = block.Slot
