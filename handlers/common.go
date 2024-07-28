@@ -255,7 +255,7 @@ func GetCurrentExactPriceFormatted(r *http.Request) string {
 	// 	return fmt.Sprintf("%s", utils.KFormatterEthPrice(price))
 	// }
 	retval := fmt.Sprintf("%s", utils.FormatFloat(price, 2))
-	logger.Infof("BOA price is %s", retval)
+	// logger.Infof("BOA price is %s", retval)
 	return retval
 }
 
