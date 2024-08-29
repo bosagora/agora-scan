@@ -1024,7 +1024,7 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 		}
 	}
 
-	batchSize := 4000 // max parameters: 65535
+	batchSize := 3000 // max parameters: 65535
 	for b := 0; b < len(validators); b += batchSize {
 		start := b
 		end := b + batchSize
@@ -1203,7 +1203,7 @@ func saveValidatorsInSlot(data *types.SlotData, tx *sql.Tx) error {
 		}
 	}
 
-	batchSize := 4000 // max parameters: 65535
+	batchSize := 3000 // max parameters: 65535
 	for b := 0; b < len(validators); b += batchSize {
 		start := b
 		end := b + batchSize
