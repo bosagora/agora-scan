@@ -72,6 +72,8 @@ func NewPrysmClient(grpcEndpoint string, rpcEndpoint string, chainId *big.Int) (
 	}
 	client.assignmentsCache, _ = lru.New(10)
 
+	// 실시간 스트림 비활성화 - 과거 히스토리만 복구하도록 설정
+	/*
 	streamChainHeadClient, err := chainClient.StreamChainHead(context.Background(), &empty.Empty{})
 	if err != nil {
 		return nil, err
@@ -108,6 +110,7 @@ func NewPrysmClient(grpcEndpoint string, rpcEndpoint string, chainId *big.Int) (
 			}
 		}
 	}()
+	*/
 	return client, nil
 }
 

@@ -213,6 +213,8 @@ func Start(client rpc.Client) error {
 		}
 	}
 
+	// 실시간 블록 스트림 처리 비활성화 - 과거 히스토리만 복구하도록 설정
+	/*
 	newBlockChan := client.GetNewBlockChan()
 
 	lastExportedSlot := uint64(0)
@@ -232,6 +234,22 @@ func Start(client rpc.Client) error {
 				}
 			}
 			lastExportedSlot = block.Slot
+		}
+	}
+	*/
+
+	// 실시간 스트림이 비활성화되었으므로, 주기적으로 체크하여 누락된 과거 데이터를 복구
+	logger.Infof("real-time block streaming disabled, only historical data will be indexed")
+	doFullCheck(client)
+
+	// 주기적으로 doFullCheck 실행 (5분마다)
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			doFullCheck(client)
 		}
 	}
 
