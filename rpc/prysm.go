@@ -72,42 +72,47 @@ func NewPrysmClient(grpcEndpoint string, rpcEndpoint string, chainId *big.Int) (
 	}
 	client.assignmentsCache, _ = lru.New(10)
 
-	streamChainHeadClient, err := chainClient.StreamChainHead(context.Background(), &empty.Empty{})
-	if err != nil {
-		return nil, err
-	}
+	// onetimeexport가 활성화되어 있지 않을 때만 실시간 스트림 시작
+	if !utils.Config.Indexer.OneTimeExport.Enabled {
+		streamChainHeadClient, err := chainClient.StreamChainHead(context.Background(), &empty.Empty{})
+		if err != nil {
+			return nil, err
+		}
 
-	go func() {
-		for {
-			head, err := streamChainHeadClient.Recv()
+		go func() {
+			for {
+				head, err := streamChainHeadClient.Recv()
 
-			if err != nil {
-				logger.Errorf("error receiving from chain head stream: %v", err)
+				if err != nil {
+					logger.Errorf("error receiving from chain head stream: %v", err)
 
-				// in order to recover from a stream error we wait for a second and then re-create the stream
-				time.Sleep(time.Second)
-				streamChainHeadClient, err = chainClient.StreamChainHead(context.Background(), &empty.Empty{})
-				for err != nil {
-					logger.Errorf("error initializing chain head stream: %v. retrying in 1s...", err)
+					// in order to recover from a stream error we wait for a second and then re-create the stream
 					time.Sleep(time.Second)
 					streamChainHeadClient, err = chainClient.StreamChainHead(context.Background(), &empty.Empty{})
+					for err != nil {
+						logger.Errorf("error initializing chain head stream: %v. retrying in 1s...", err)
+						time.Sleep(time.Second)
+						streamChainHeadClient, err = chainClient.StreamChainHead(context.Background(), &empty.Empty{})
+					}
+					continue
 				}
-				continue
-			}
 
-			blocks, err := client.GetBlocksBySlot(uint64(head.HeadSlot))
+				blocks, err := client.GetBlocksBySlot(uint64(head.HeadSlot))
 
-			if err != nil {
-				logger.Errorf("error receiving blocks via chain head stream: %v", err)
-				continue
-			}
+				if err != nil {
+					logger.Errorf("error receiving blocks via chain head stream: %v", err)
+					continue
+				}
 
-			for _, b := range blocks {
-				logger.Infof("received block at slot %v with hash %x via stream", blocks[0].Slot, blocks[0].BlockRoot)
-				client.newBlockChan <- b
+				for _, b := range blocks {
+					logger.Infof("received block at slot %v with hash %x via stream", blocks[0].Slot, blocks[0].BlockRoot)
+					client.newBlockChan <- b
+				}
 			}
-		}
-	}()
+		}()
+	} else {
+		logger.Infof("real-time block streaming disabled (onetimeexport enabled)")
+	}
 	return client, nil
 }
 

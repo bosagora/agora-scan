@@ -213,25 +213,43 @@ func Start(client rpc.Client) error {
 		}
 	}
 
-	newBlockChan := client.GetNewBlockChan()
+	// onetimeexport가 활성화되어 있지 않으면 실시간 블록 스트림 처리
+	if !utils.Config.Indexer.OneTimeExport.Enabled {
+		newBlockChan := client.GetNewBlockChan()
 
-	lastExportedSlot := uint64(0)
+		lastExportedSlot := uint64(0)
 
-	doFullCheck(client)
+		doFullCheck(client)
 
-	for {
-		select {
-		case block := <-newBlockChan:
-			// Do a full check on any epoch transition or after during the first run
-			if utils.EpochOfSlot(lastExportedSlot) != utils.EpochOfSlot(block.Slot) || utils.EpochOfSlot(block.Slot) == 0 {
-				doFullCheck(client)
-			} else { // else just save the in epoch block
-				err := db.SaveBlock(block)
-				if err != nil {
-					logger.Errorf("error saving block: %v", err)
+		for {
+			select {
+			case block := <-newBlockChan:
+				// Do a full check on any epoch transition or after during the first run
+				if utils.EpochOfSlot(lastExportedSlot) != utils.EpochOfSlot(block.Slot) || utils.EpochOfSlot(block.Slot) == 0 {
+					doFullCheck(client)
+				} else { // else just save the in epoch block
+					err := db.SaveBlock(block)
+					if err != nil {
+						logger.Errorf("error saving block: %v", err)
+					}
 				}
+				lastExportedSlot = block.Slot
 			}
-			lastExportedSlot = block.Slot
+		}
+	} else {
+		// onetimeexport가 활성화되어 있으면 실시간 스트림을 사용하지 않고 주기적으로 체크
+		logger.Infof("real-time block streaming disabled (onetimeexport enabled), only historical data will be indexed")
+		doFullCheck(client)
+
+		// 주기적으로 doFullCheck 실행 (5분마다)
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				doFullCheck(client)
+			}
 		}
 	}
 
