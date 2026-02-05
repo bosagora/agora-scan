@@ -54,7 +54,7 @@ func main() {
 
 	for {
 		t0 := time.Now()
-		runBackfill(slotsPerEpoch, *lookback)
+		runBackfill(slotsPerEpoch, uint64(*lookback))
 		elapsed := time.Since(t0)
 		logrus.Infof("backfill cycle finished in %v, sleeping %v", elapsed, *interval)
 		time.Sleep(*interval)

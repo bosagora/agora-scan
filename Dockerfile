@@ -35,8 +35,8 @@ WORKDIR /app
 COPY --from=build-env /src/bin /app/
 COPY --from=build-env /src/config /app/config
 
-# Make explorer executable
-RUN chmod +x /app/explorer
+# Make binaries executable
+RUN chmod +x /app/explorer /app/withdrawal-backfill 2>/dev/null || true
 
 # Expose default port (adjust if needed based on your config)
 EXPOSE 3333
