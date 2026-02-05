@@ -2727,6 +2727,49 @@ func UpdateValidatorBalancesWithdrawal(epoch uint64, withdrawals map[uint64]uint
 	return nil
 }
 
+// Withdrawal backfill progress: single row, last_processed_epoch so we process low→high, no duplicates.
+const withdrawalBackfillProgressTable = `CREATE TABLE IF NOT EXISTS withdrawal_backfill_progress (
+	id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+	last_processed_epoch BIGINT NOT NULL,
+	updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);`
+
+func EnsureWithdrawalBackfillProgressTable() error {
+	if _, err := WriterDb.Exec(withdrawalBackfillProgressTable); err != nil {
+		return err
+	}
+	// When table is new, set initial progress to current max epoch (backfill only from next epoch onward).
+	var count int
+	if err := WriterDb.Get(&count, "SELECT COUNT(*) FROM withdrawal_backfill_progress WHERE id = 1"); err != nil {
+		return err
+	}
+	if count == 0 {
+		_, err := WriterDb.Exec(`
+			INSERT INTO withdrawal_backfill_progress (id, last_processed_epoch)
+			SELECT 1, COALESCE((SELECT MAX(epoch) FROM validator_balances_p), 0)::BIGINT`)
+		return err
+	}
+	return nil
+}
+
+// GetWithdrawalBackfillProgress returns the last epoch that was successfully backfilled. -1 if none yet.
+func GetWithdrawalBackfillProgress() (int64, error) {
+	var last int64
+	err := WriterDb.Get(&last, "SELECT last_processed_epoch FROM withdrawal_backfill_progress WHERE id = 1")
+	if err != nil {
+		return -1, err
+	}
+	return last, nil
+}
+
+// SetWithdrawalBackfillProgress records that epoch was successfully backfilled (sequential, no duplicate).
+func SetWithdrawalBackfillProgress(epoch uint64) error {
+	_, err := WriterDb.Exec(
+		"UPDATE withdrawal_backfill_progress SET last_processed_epoch = $1, updated_at = NOW() WHERE id = 1",
+		int64(epoch))
+	return err
+}
+
 // UpdateValidatorsWithdrawal sets the cumulative withdrawal on the validators table.
 // Used by withdrawal-backfill so validators.withdrawal stays in sync when the main indexer skips withdrawals.
 func UpdateValidatorsWithdrawal(withdrawals map[uint64]uint64) error {

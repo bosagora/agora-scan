@@ -17,7 +17,8 @@ import (
 func main() {
 	configPath := flag.String("config", "", "Path to the config file")
 	interval := flag.Duration("interval", 15*time.Minute, "How often to run a backfill cycle")
-	lookback := flag.Uint("epochs", 20, "Number of recent epochs to backfill per cycle")
+	lookback := flag.Uint("epochs", 20, "Number of epochs to backfill per cycle (sequential from progress)")
+	startFromEpoch := flag.Uint64("start-from-epoch", 0, "If progress is -1, set it to (start-from-epoch-1) so backfill begins at this epoch (e.g. 249012); 0 = start from epoch 0")
 	flag.Parse()
 
 	cfg := &types.Config{}
@@ -45,12 +46,32 @@ func main() {
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
 
+	if err := db.EnsureWithdrawalBackfillProgressTable(); err != nil {
+		logrus.Fatalf("ensure withdrawal_backfill_progress table: %v", err)
+	}
+	if *startFromEpoch > 0 {
+		lastDone, err := db.GetWithdrawalBackfillProgress()
+		if err != nil {
+			logrus.Fatalf("get withdrawal backfill progress: %v", err)
+		}
+		if lastDone < 0 {
+			initEpoch := int64(*startFromEpoch) - 1
+			if initEpoch < 0 {
+				initEpoch = 0
+			}
+			if err := db.SetWithdrawalBackfillProgress(uint64(initEpoch)); err != nil {
+				logrus.Fatalf("set initial progress to %d: %v", initEpoch, err)
+			}
+			logrus.Infof("initial progress set to epoch %d (backfill will start from epoch %d)", initEpoch, *startFromEpoch)
+		}
+	}
+
 	slotsPerEpoch := utils.Config.Chain.Config.SlotsPerEpoch
 	if slotsPerEpoch == 0 {
 		slotsPerEpoch = 32
 	}
 
-	logrus.Infof("withdrawal-backfill started: interval=%v, epochs per cycle=%d (each epoch ~4min for GetAllValidatorTotalWithdrawals)", *interval, *lookback)
+	logrus.Infof("withdrawal-backfill started: interval=%v, epochs per cycle=%d (sequential from low epoch, no duplicate)", *interval, *lookback)
 
 	for {
 		t0 := time.Now()
@@ -67,32 +88,51 @@ func runBackfill(slotsPerEpoch, lookback uint64) {
 		logrus.Errorf("getting max epoch: %v", err)
 		return
 	}
-	if maxEpoch == 0 {
+
+	lastDone, err := db.GetWithdrawalBackfillProgress()
+	if err != nil {
+		logrus.Errorf("get withdrawal backfill progress: %v", err)
 		return
 	}
-
-	start := uint64(0)
-	if maxEpoch >= lookback {
-		start = maxEpoch - lookback + 1
+	if lastDone < 0 {
+		// No progress yet: treat as "already at head", so we only backfill new epochs from now on.
+		if err := db.SetWithdrawalBackfillProgress(maxEpoch); err != nil {
+			logrus.Errorf("set initial progress to maxEpoch %d: %v", maxEpoch, err)
+			return
+		}
+		logrus.Infof("initial progress set to current max epoch %d (will backfill from epoch %d onward)", maxEpoch, maxEpoch+1)
+		lastDone = int64(maxEpoch)
 	}
+	startEpoch := uint64(lastDone + 1)
+
+	if startEpoch > maxEpoch {
+		return
+	}
+	endEpoch := startEpoch + lookback - 1
+	if endEpoch > maxEpoch {
+		endEpoch = maxEpoch
+	}
+	// Process low → high, sequential; record each so we never redo and never skip.
 	var lastWithdrawals map[uint64]uint64
-	for epoch := start; epoch <= maxEpoch; epoch++ {
+	for epoch := startEpoch; epoch <= endEpoch; epoch++ {
 		endSlot := (epoch+1)*slotsPerEpoch - 1
 		t0 := time.Now()
 		withdrawals, err := db.GetAllValidatorTotalWithdrawals(endSlot)
 		if err != nil {
 			logrus.Errorf("GetAllValidatorTotalWithdrawals(epoch=%d, slot=%d): %v", epoch, endSlot, err)
-			continue
+			return
 		}
-		elapsed := time.Since(t0)
 		if err := db.UpdateValidatorBalancesWithdrawal(epoch, withdrawals); err != nil {
 			logrus.Errorf("UpdateValidatorBalancesWithdrawal(epoch=%d): %v", epoch, err)
-			continue
+			return
+		}
+		if err := db.SetWithdrawalBackfillProgress(epoch); err != nil {
+			logrus.Errorf("SetWithdrawalBackfillProgress(epoch=%d): %v", epoch, err)
+			return
 		}
 		lastWithdrawals = withdrawals
-		logrus.Infof("backfilled withdrawal epoch=%d slot=%d validators=%d took %v", epoch, endSlot, len(withdrawals), elapsed)
+		logrus.Infof("backfilled withdrawal epoch=%d slot=%d validators=%d took %v (progress recorded)", epoch, endSlot, len(withdrawals), time.Since(t0))
 	}
-	// Keep validators.withdrawal (cumulative) in sync using the latest epoch's totals
 	if lastWithdrawals != nil {
 		if err := db.UpdateValidatorsWithdrawal(lastWithdrawals); err != nil {
 			logrus.Errorf("UpdateValidatorsWithdrawal: %v", err)

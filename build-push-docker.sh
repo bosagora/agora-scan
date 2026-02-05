@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-TAG_NAME="$(git rev-parse --short=12 HEAD)"
-echo "TAG_NAME=agora_v2.0.2-${TAG_NAME}"
+TAG_NAME="agora_v2.0.2-$(git rev-parse --short=12 HEAD)"
+echo "TAG_NAME=$TAG_NAME"
 
 IMAGE="bosagora/agora-scan"
 
