@@ -213,27 +213,51 @@ func Start(client rpc.Client) error {
 		}
 	}
 
-	// onetimeexport가 활성화되어 있지 않으면 실시간 블록 스트림 처리
+	// Epoch-based indexing: no real-time block stream. When a new epoch has started
+	// and at least ProcessDelaySlots slots have been produced, index the closed epoch(s).
+	// (1 epoch = 32 slots, 1 slot every 12s; delay 2 slots gives ~24s after epoch boundary.)
 	if !utils.Config.Indexer.OneTimeExport.Enabled {
-		newBlockChan := client.GetNewBlockChan()
+		pollInterval := time.Duration(utils.Config.Indexer.PollIntervalSeconds) * time.Second
+		if pollInterval == 0 {
+			pollInterval = 10 * time.Second
+		}
+		delaySlots := utils.Config.Indexer.ProcessDelaySlots
+		if delaySlots == 0 {
+			delaySlots = 2
+		}
 
-		lastExportedSlot := uint64(0)
+		// ensure we can reach the node first
+		var head *types.ChainHead
+		for {
+			h, err := client.GetChainHead()
+			if err == nil {
+				head = h
+				break
+			}
+			logger.Errorf("beacon-node seems to be unavailable: %v", err)
+			time.Sleep(pollInterval)
+		}
 
 		doFullCheck(client)
 
-		for {
-			select {
-			case block := <-newBlockChan:
-				// Do a full check on any epoch transition or after during the first run
-				if utils.EpochOfSlot(lastExportedSlot) != utils.EpochOfSlot(block.Slot) || utils.EpochOfSlot(block.Slot) == 0 {
+		lastProcessedEpoch := head.HeadEpoch
+
+		ticker := time.NewTicker(pollInterval)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			h, err := client.GetChainHead()
+			if err != nil {
+				logger.Errorf("error fetching chain head: %v", err)
+				continue
+			}
+			currentEpoch := h.HeadEpoch
+			if currentEpoch != lastProcessedEpoch {
+				epochStartSlot := currentEpoch * uint64(utils.Config.Chain.Config.SlotsPerEpoch)
+				if h.HeadSlot >= epochStartSlot+uint64(delaySlots) {
 					doFullCheck(client)
-				} else { // else just save the in epoch block
-					err := db.SaveBlock(block)
-					if err != nil {
-						logger.Errorf("error saving block: %v", err)
-					}
+					lastProcessedEpoch = currentEpoch
 				}
-				lastExportedSlot = block.Slot
 			}
 		}
 	} else {
@@ -370,15 +394,21 @@ func doFullCheck(client rpc.Client) {
 		}
 	}
 
-	logger.Printf("exporting %v epochs.", len(epochsToExport))
-
-	keys := make([]uint64, 0)
+	keys := make([]uint64, 0, len(epochsToExport))
 	for k := range epochsToExport {
 		keys = append(keys, k)
 	}
 	sort.Slice(keys, func(i, j int) bool {
 		return keys[i] < keys[j]
 	})
+
+	maxPerCheck := utils.Config.Indexer.MaxEpochsPerCheck
+	if maxPerCheck > 0 && len(keys) > maxPerCheck {
+		logger.Printf("exporting %v of %v epochs (maxEpochsPerCheck=%v)", maxPerCheck, len(keys), maxPerCheck)
+		keys = keys[:maxPerCheck]
+	} else {
+		logger.Printf("exporting %v epochs.", len(keys))
+	}
 
 	for _, epoch := range keys {
 		if epochBlacklist[epoch] > 3 {
@@ -512,6 +542,27 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 
 	if len(data.Validators) == 0 {
 		return fmt.Errorf("error retrieving epoch data: no validators received for epoch")
+	}
+
+	// Optionally skip exited/withdrawn validators to reduce indexing workload
+	if utils.Config.Indexer.SkipExitedValidators {
+		filtered := make([]*types.Validator, 0, len(data.Validators))
+		for _, v := range data.Validators {
+			if v == nil {
+				continue
+			}
+			// Skip validators that have completed withdrawable epoch (fully withdrawable)
+			if v.WithdrawableEpoch != 0 && v.WithdrawableEpoch <= data.Epoch {
+				continue
+			}
+			// Fallback: skip by status text if it explicitly mentions withdraw/exit
+			status := strings.ToLower(v.Status)
+			if strings.Contains(status, "withdraw") || strings.Contains(status, "exit") {
+				continue
+			}
+			filtered = append(filtered, v)
+		}
+		data.Validators = filtered
 	}
 
 	return db.SaveEpoch(data)

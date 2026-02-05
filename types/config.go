@@ -51,6 +51,18 @@ type Config struct {
 			EndEpoch   uint64   `yaml:"endEpoch" envconfig:"INDEXER_ONETIMEEXPORT_END_EPOCH"`
 			Epochs     []uint64 `yaml:"epochs" envconfig:"INDEXER_ONETIMEEXPORT_EPOCHS"`
 		} `yaml:"onetimeexport"`
+
+		// Processing tuning
+		PollIntervalSeconds  int  `yaml:"pollIntervalSeconds" envconfig:"INDEXER_POLL_INTERVAL_SECONDS"`
+		ProcessDelaySlots    int  `yaml:"processDelaySlots" envconfig:"INDEXER_PROCESS_DELAY_SLOTS"`
+		MaxEpochsPerCheck    int  `yaml:"maxEpochsPerCheck" envconfig:"INDEXER_MAX_EPOCHS_PER_CHECK"` // 0 = no limit
+		// Skip expensive parsing or DB lookups
+		SkipExecutionPayloadParsing bool `yaml:"skipExecutionPayloadParsing" envconfig:"INDEXER_SKIP_EXEC_PAYLOAD_PARSING"`
+		SkipValidatorWithdrawals    bool `yaml:"skipValidatorWithdrawals" envconfig:"INDEXER_SKIP_VALIDATOR_WITHDRAWALS"`
+		// Skip exited/withdrawn validators from indexing
+		SkipExitedValidators bool `yaml:"skipExitedValidators" envconfig:"INDEXER_SKIP_EXITED_VALIDATORS"`
+		// Transaction decode concurrency
+		TxDecodeWorkers int `yaml:"txDecodeWorkers" envconfig:"INDEXER_TX_DECODE_WORKERS"`
 		PubKeyTagsExporter struct {
 			Enabled bool `yaml:"enabled" envconfig:"PUBKEY_TAGS_EXPORTER_ENABLED"`
 		} `yaml:"pubkeyTagsExporter"`

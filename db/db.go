@@ -1024,6 +1024,15 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 		}
 	}
 
+	updateWithdrawal := ""
+	if !utils.Config.Indexer.SkipValidatorWithdrawals {
+		updateWithdrawal = `withdrawal                 = EXCLUDED.withdrawal,
+				withdrawal1d               = EXCLUDED.withdrawal1d,
+				withdrawal7d               = EXCLUDED.withdrawal7d,
+				withdrawal31d              = EXCLUDED.withdrawal31d,
+				`
+	}
+
 	batchSize := 3000 // max parameters: 65535
 	for b := 0; b < len(validators); b += batchSize {
 		start := b
@@ -1093,10 +1102,7 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 				balance1d                  = EXCLUDED.balance1d,
 				balance7d                  = EXCLUDED.balance7d,
 				balance31d                 = EXCLUDED.balance31d,
-				withdrawal                 = EXCLUDED.withdrawal,
-				withdrawal1d               = EXCLUDED.withdrawal1d,
-				withdrawal7d               = EXCLUDED.withdrawal7d,
-				withdrawal31d              = EXCLUDED.withdrawal31d,
+				%[4]s
 				lastattestationslot        =
 					CASE
 					WHEN EXCLUDED.lastattestationslot > COALESCE(validators.lastattestationslot, 0) THEN EXCLUDED.lastattestationslot
@@ -1115,7 +1121,7 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 					WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'active_offline'
 					ELSE 'active_online'
 					END`,
-			latestBlock, thresholdSlot, strings.Join(valueStrings, ","))
+			latestBlock, thresholdSlot, strings.Join(valueStrings, ","), updateWithdrawal)
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return err
@@ -1203,6 +1209,15 @@ func saveValidatorsInSlot(data *types.SlotData, tx *sql.Tx) error {
 		}
 	}
 
+	updateWithdrawalSlot := ""
+	if !utils.Config.Indexer.SkipValidatorWithdrawals {
+		updateWithdrawalSlot = `withdrawal                 = EXCLUDED.withdrawal,
+				withdrawal1d               = EXCLUDED.withdrawal1d,
+				withdrawal7d               = EXCLUDED.withdrawal7d,
+				withdrawal31d              = EXCLUDED.withdrawal31d,
+				`
+	}
+
 	batchSize := 3000 // max parameters: 65535
 	for b := 0; b < len(validators); b += batchSize {
 		start := b
@@ -1272,10 +1287,7 @@ func saveValidatorsInSlot(data *types.SlotData, tx *sql.Tx) error {
 				balance1d                  = EXCLUDED.balance1d,
 				balance7d                  = EXCLUDED.balance7d,
 				balance31d                 = EXCLUDED.balance31d,
-				withdrawal                 = EXCLUDED.withdrawal,
-				withdrawal1d               = EXCLUDED.withdrawal1d,
-				withdrawal7d               = EXCLUDED.withdrawal7d,
-				withdrawal31d              = EXCLUDED.withdrawal31d,
+				%[4]s
 				lastattestationslot        =
 					CASE
 					WHEN EXCLUDED.lastattestationslot > COALESCE(validators.lastattestationslot, 0) THEN EXCLUDED.lastattestationslot
@@ -1294,7 +1306,7 @@ func saveValidatorsInSlot(data *types.SlotData, tx *sql.Tx) error {
 					WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'active_offline'
 					ELSE 'active_online'
 					END`,
-			latestEpoch, thresholdSlot, strings.Join(valueStrings, ","))
+			latestEpoch, thresholdSlot, strings.Join(valueStrings, ","), updateWithdrawalSlot)
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return err
@@ -2663,4 +2675,90 @@ func GetAllValidatorTotalWithdrawals(slot uint64) (map[uint64]uint64, error) {
 		allValidatorBalances[w.ValidatorIndex] = w.Sum
 	}
 	return allValidatorBalances, err
+}
+
+// UpdateValidatorBalancesWithdrawal sets withdrawal and total_balance for an epoch in
+// validator_balances_p and validator_balances_recent. Used by the withdrawal-backfill process.
+func UpdateValidatorBalancesWithdrawal(epoch uint64, withdrawals map[uint64]uint64) error {
+	if len(withdrawals) == 0 {
+		return nil
+	}
+	const batchSize = 2000
+	entries := make([]struct{ vi, w uint64 }, 0, len(withdrawals))
+	for vi, w := range withdrawals {
+		entries = append(entries, struct{ vi, w uint64 }{vi, w})
+	}
+	for i := 0; i < len(entries); i += batchSize {
+		end := i + batchSize
+		if end > len(entries) {
+			end = len(entries)
+		}
+		batch := entries[i:end]
+		valueStrings := make([]string, 0, len(batch))
+		valueArgs := make([]interface{}, 0, 1+len(batch)*2)
+		valueArgs = append(valueArgs, epoch)
+		for j, e := range batch {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d)", 2+j*2, 2+j*2+1))
+			valueArgs = append(valueArgs, e.vi, e.w)
+		}
+		stmt := fmt.Sprintf(`
+			UPDATE validator_balances_p AS vb SET
+				withdrawal = d.w,
+				total_balance = vb.balance + d.w
+			FROM (VALUES %s) AS d(validatorindex, w)
+			WHERE vb.epoch = $1 AND vb.validatorindex = d.validatorindex`,
+			strings.Join(valueStrings, ","))
+		_, err := WriterDb.Exec(stmt, valueArgs...)
+		if err != nil {
+			return fmt.Errorf("update validator_balances_p epoch %d: %w", epoch, err)
+		}
+		stmtRecent := fmt.Sprintf(`
+			UPDATE validator_balances_recent AS vb SET
+				withdrawal = d.w,
+				total_balance = vb.balance + d.w
+			FROM (VALUES %s) AS d(validatorindex, w)
+			WHERE vb.epoch = $1 AND vb.validatorindex = d.validatorindex`,
+			strings.Join(valueStrings, ","))
+		_, err = WriterDb.Exec(stmtRecent, valueArgs...)
+		if err != nil {
+			return fmt.Errorf("update validator_balances_recent epoch %d: %w", epoch, err)
+		}
+	}
+	return nil
+}
+
+// UpdateValidatorsWithdrawal sets the cumulative withdrawal on the validators table.
+// Used by withdrawal-backfill so validators.withdrawal stays in sync when the main indexer skips withdrawals.
+func UpdateValidatorsWithdrawal(withdrawals map[uint64]uint64) error {
+	if len(withdrawals) == 0 {
+		return nil
+	}
+	const batchSize = 2000
+	entries := make([]struct{ vi, w uint64 }, 0, len(withdrawals))
+	for vi, w := range withdrawals {
+		entries = append(entries, struct{ vi, w uint64 }{vi, w})
+	}
+	for i := 0; i < len(entries); i += batchSize {
+		end := i + batchSize
+		if end > len(entries) {
+			end = len(entries)
+		}
+		batch := entries[i:end]
+		valueStrings := make([]string, 0, len(batch))
+		valueArgs := make([]interface{}, 0, len(batch)*2)
+		for j, e := range batch {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d)", j*2+1, j*2+2))
+			valueArgs = append(valueArgs, e.vi, e.w)
+		}
+		stmt := fmt.Sprintf(`
+			UPDATE validators AS v SET withdrawal = d.w
+			FROM (VALUES %s) AS d(validatorindex, w)
+			WHERE v.validatorindex = d.validatorindex`,
+			strings.Join(valueStrings, ","))
+		_, err := WriterDb.Exec(stmt, valueArgs...)
+		if err != nil {
+			return fmt.Errorf("update validators withdrawal: %w", err)
+		}
+	}
+	return nil
 }

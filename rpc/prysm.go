@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	gtypes "github.com/ethereum/go-ethereum/core/types"
@@ -289,18 +290,22 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	//var validatorWithdrawal7d map[uint64]uint64
 	//var validatorWithdrawal31d map[uint64]uint64
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		start := time.Now()
-		var err error
-		validatorWithdrawal, err = db.GetAllValidatorTotalWithdrawals(uint64(lastSlot))
-		if err != nil {
-			logrus.Errorf("error retrieving validator total withdrawal for slot %v : %v", lastSlot, err)
-			return
-		}
-		logger.Printf("retrieved data for %v validator balances for slot %v (1d) took %v", len(parsedValidators.Data), slot1d, time.Since(start))
-	}()
+	if utils.Config.Indexer.SkipValidatorWithdrawals {
+		validatorWithdrawal = make(map[uint64]uint64)
+	} else {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			start := time.Now()
+			var err error
+			validatorWithdrawal, err = db.GetAllValidatorTotalWithdrawals(uint64(lastSlot))
+			if err != nil {
+				logrus.Errorf("error retrieving validator total withdrawal for slot %v : %v", lastSlot, err)
+				return
+			}
+			logger.Printf("retrieved data for %v validator balances for slot %v (1d) took %v", len(parsedValidators.Data), slot1d, time.Since(start))
+		}()
+	}
 /*
 	wg.Add(1)
 	go func() {
@@ -948,53 +953,85 @@ func (pc *PrysmClient) parseBellatrixBlock(block *ethpb.BeaconBlockContainer) (*
 	}
 
 	if payload := blk.Block.Body.ExecutionPayload; payload != nil && !bytes.Equal(payload.ParentHash, make([]byte, 32)) {
-		txs := make([]*types.Transaction, 0, len(payload.Transactions))
-		for i, rawTx := range payload.Transactions {
-			tx := &types.Transaction{Raw: rawTx}
-			var decTx gtypes.Transaction
-			if err := decTx.UnmarshalBinary(rawTx); err != nil {
-				return nil, fmt.Errorf("error parsing tx %d block %x: %v", i, payload.BlockHash, err)
-			} else {
-				h := decTx.Hash()
-				tx.TxHash = h[:]
-				tx.AccountNonce = decTx.Nonce()
-				// big endian
-				tx.Price = decTx.GasPrice().Bytes()
-				tx.GasLimit = decTx.Gas()
-				sender, err := pc.signer.Sender(&decTx)
-				if err != nil {
-					return nil, fmt.Errorf("transaction with invalid sender (tx hash: %x): %v", h, err)
-				}
-				tx.Sender = sender.Bytes()
-				if v := decTx.To(); v != nil {
-					tx.Recipient = v.Bytes()
-				} else {
-					tx.Recipient = []byte{}
-				}
-				tx.Amount = decTx.Value().Bytes()
-				tx.Payload = decTx.Data()
-				tx.MaxPriorityFeePerGas = decTx.GasTipCap().Uint64()
-				tx.MaxFeePerGas = decTx.GasFeeCap().Uint64()
+		if utils.Config.Indexer.SkipExecutionPayloadParsing {
+			b.ExecutionPayload = &types.ExecutionPayload{
+				ParentHash:    payload.ParentHash,
+				FeeRecipient:  payload.FeeRecipient,
+				BlockNumber:   payload.BlockNumber,
+				Timestamp:     payload.Timestamp,
+				BlockHash:     payload.BlockHash,
 			}
-			txs = append(txs, tx)
-		}
+		} else {
+			// Parallelize transaction decoding using a bounded worker pool to reduce wall-time
+			txCount := len(payload.Transactions)
+			txs := make([]*types.Transaction, txCount)
+			var wg sync.WaitGroup
+			workers := utils.Config.Indexer.TxDecodeWorkers
+			if workers <= 0 {
+				workers = 4
+			}
+			sem := make(chan struct{}, workers)
+			var decodeErr atomic.Value
 
-		b.ExecutionPayload = &types.ExecutionPayload{
-			ParentHash:    payload.ParentHash,
-			FeeRecipient:  payload.FeeRecipient,
-			StateRoot:     payload.StateRoot,
-			ReceiptsRoot:  payload.ReceiptsRoot,
-			LogsBloom:     payload.LogsBloom,
-			Random:        payload.PrevRandao,
-			BlockNumber:   payload.BlockNumber,
-			GasLimit:      payload.GasLimit,
-			GasUsed:       payload.GasUsed,
-			Timestamp:     payload.Timestamp,
-			ExtraData:     payload.ExtraData,
-			BaseFeePerGas: binary.LittleEndian.Uint64(payload.BaseFeePerGas), // TODO, this is problematic
-			BlockHash:     payload.BlockHash,
-			Transactions:  txs,
-			Withdrawals:   nil,
+			for i := 0; i < txCount; i++ {
+				rawTx := payload.Transactions[i]
+				wg.Add(1)
+				sem <- struct{}{}
+				go func(idx int, raw []byte) {
+					defer wg.Done()
+					defer func() { <-sem }()
+					tx := &types.Transaction{Raw: raw}
+					var decTx gtypes.Transaction
+					if err := decTx.UnmarshalBinary(raw); err != nil {
+						decodeErr.Store(fmt.Errorf("error parsing tx %d block %x: %v", idx, payload.BlockHash, err))
+						return
+					}
+					h := decTx.Hash()
+					tx.TxHash = h[:]
+					tx.AccountNonce = decTx.Nonce()
+					// big endian
+					tx.Price = decTx.GasPrice().Bytes()
+					tx.GasLimit = decTx.Gas()
+					if sender, err := pc.signer.Sender(&decTx); err == nil {
+						tx.Sender = sender.Bytes()
+					} else {
+						decodeErr.Store(fmt.Errorf("transaction with invalid sender (tx hash: %x): %v", h, err))
+						return
+					}
+					if v := decTx.To(); v != nil {
+						tx.Recipient = v.Bytes()
+					} else {
+						tx.Recipient = []byte{}
+					}
+					tx.Amount = decTx.Value().Bytes()
+					tx.Payload = decTx.Data()
+					tx.MaxPriorityFeePerGas = decTx.GasTipCap().Uint64()
+					tx.MaxFeePerGas = decTx.GasFeeCap().Uint64()
+					txs[idx] = tx
+				}(i, rawTx)
+			}
+			wg.Wait()
+			if v := decodeErr.Load(); v != nil {
+				return nil, v.(error)
+			}
+
+			b.ExecutionPayload = &types.ExecutionPayload{
+				ParentHash:    payload.ParentHash,
+				FeeRecipient:  payload.FeeRecipient,
+				StateRoot:     payload.StateRoot,
+				ReceiptsRoot:  payload.ReceiptsRoot,
+				LogsBloom:     payload.LogsBloom,
+				Random:        payload.PrevRandao,
+				BlockNumber:   payload.BlockNumber,
+				GasLimit:      payload.GasLimit,
+				GasUsed:       payload.GasUsed,
+				Timestamp:     payload.Timestamp,
+				ExtraData:     payload.ExtraData,
+				BaseFeePerGas: binary.LittleEndian.Uint64(payload.BaseFeePerGas), // TODO, this is problematic
+				BlockHash:     payload.BlockHash,
+				Transactions:  txs,
+				Withdrawals:   nil,
+			}
 		}
 	}
 
@@ -1159,65 +1196,97 @@ func (pc *PrysmClient) parseCapellaBlock(block *ethpb.BeaconBlockContainer) (*ty
 
 	// ExecutionPayload
 	if payload := blk.Block.Body.ExecutionPayload; payload != nil && !bytes.Equal(payload.ParentHash, make([]byte, 32)) {
-		txs := make([]*types.Transaction, 0, len(payload.Transactions))
-		for i, rawTx := range payload.Transactions {
-			tx := &types.Transaction{Raw: rawTx}
-			var decTx gtypes.Transaction
-			if err := decTx.UnmarshalBinary(rawTx); err != nil {
-				return nil, fmt.Errorf("error parsing tx %d block %x: %v", i, payload.BlockHash, err)
-			} else {
-				h := decTx.Hash()
-				tx.TxHash = h[:]
-				tx.AccountNonce = decTx.Nonce()
-				// big endian
-				tx.Price = decTx.GasPrice().Bytes()
-				tx.GasLimit = decTx.Gas()
-				sender, err := pc.signer.Sender(&decTx)
-				if err != nil {
-					return nil, fmt.Errorf("transaction with invalid sender (tx hash: %x): %v", h, err)
-				}
-				tx.Sender = sender.Bytes()
-				if v := decTx.To(); v != nil {
-					tx.Recipient = v.Bytes()
-				} else {
-					tx.Recipient = []byte{}
-				}
-				tx.Amount = decTx.Value().Bytes()
-				tx.Payload = decTx.Data()
-				tx.MaxPriorityFeePerGas = decTx.GasTipCap().Uint64()
-				tx.MaxFeePerGas = decTx.GasFeeCap().Uint64()
+		if utils.Config.Indexer.SkipExecutionPayloadParsing {
+			b.ExecutionPayload = &types.ExecutionPayload{
+				ParentHash:   payload.ParentHash,
+				FeeRecipient: payload.FeeRecipient,
+				BlockNumber:  payload.BlockNumber,
+				Timestamp:    payload.Timestamp,
+				BlockHash:    payload.BlockHash,
 			}
-			txs = append(txs, tx)
-		}
+		} else {
+			// Parallelize transaction decoding using a bounded worker pool
+			txCount := len(payload.Transactions)
+			txs := make([]*types.Transaction, txCount)
+			var wg sync.WaitGroup
+			workers := utils.Config.Indexer.TxDecodeWorkers
+			if workers <= 0 {
+				workers = 4
+			}
+			sem := make(chan struct{}, workers)
+			var decodeErr atomic.Value
 
-		withdrawals := make([]*types.Withdrawals, 0, len(payload.Withdrawals))
-		for _, rawWithdrawal := range payload.Withdrawals {
-			withdraw := &types.Withdrawals{}
-			withdraw.Slot = uint64(blk.Block.Slot)
-			withdraw.BlockRoot = block.BlockRoot
-			withdraw.Index = rawWithdrawal.Index
-			withdraw.ValidatorIndex = uint64(rawWithdrawal.ValidatorIndex)
-			withdraw.Address = rawWithdrawal.Address
-			withdraw.Amount = rawWithdrawal.Amount
-			withdrawals = append(withdrawals, withdraw)
-		}
+			for i := 0; i < txCount; i++ {
+				rawTx := payload.Transactions[i]
+				wg.Add(1)
+				sem <- struct{}{}
+				go func(idx int, raw []byte) {
+					defer wg.Done()
+					defer func() { <-sem }()
+					tx := &types.Transaction{Raw: raw}
+					var decTx gtypes.Transaction
+					if err := decTx.UnmarshalBinary(raw); err != nil {
+						decodeErr.Store(fmt.Errorf("error parsing tx %d block %x: %v", idx, payload.BlockHash, err))
+						return
+					}
+					h := decTx.Hash()
+					tx.TxHash = h[:]
+					tx.AccountNonce = decTx.Nonce()
+					// big endian
+					tx.Price = decTx.GasPrice().Bytes()
+					tx.GasLimit = decTx.Gas()
+					if sender, err := pc.signer.Sender(&decTx); err == nil {
+						tx.Sender = sender.Bytes()
+					} else {
+						decodeErr.Store(fmt.Errorf("transaction with invalid sender (tx hash: %x): %v", h, err))
+						return
+					}
+					if v := decTx.To(); v != nil {
+						tx.Recipient = v.Bytes()
+					} else {
+						tx.Recipient = []byte{}
+					}
+					tx.Amount = decTx.Value().Bytes()
+					tx.Payload = decTx.Data()
+					tx.MaxPriorityFeePerGas = decTx.GasTipCap().Uint64()
+					tx.MaxFeePerGas = decTx.GasFeeCap().Uint64()
+					txs[idx] = tx
+				}(i, rawTx)
+			}
+			wg.Wait()
+			if v := decodeErr.Load(); v != nil {
+				return nil, v.(error)
+			}
 
-		b.ExecutionPayload = &types.ExecutionPayload{
-			ParentHash:    payload.ParentHash,
-			FeeRecipient:  payload.FeeRecipient,
-			StateRoot:     payload.StateRoot,
-			ReceiptsRoot:  payload.ReceiptsRoot,
-			LogsBloom:     payload.LogsBloom,
-			Random:        payload.PrevRandao,
-			BlockNumber:   payload.BlockNumber,
-			GasLimit:      payload.GasLimit,
-			GasUsed:       payload.GasUsed,
-			Timestamp:     payload.Timestamp,
-			ExtraData:     payload.ExtraData,
-			BaseFeePerGas: binary.LittleEndian.Uint64(payload.BaseFeePerGas), // TODO, this is problematic
-			BlockHash:     payload.BlockHash,
-			Transactions:  txs,
-			Withdrawals:   withdrawals,
+			withdrawals := make([]*types.Withdrawals, 0, len(payload.Withdrawals))
+			for _, rawWithdrawal := range payload.Withdrawals {
+				withdraw := &types.Withdrawals{}
+				withdraw.Slot = uint64(blk.Block.Slot)
+				withdraw.BlockRoot = block.BlockRoot
+				withdraw.Index = rawWithdrawal.Index
+				withdraw.ValidatorIndex = uint64(rawWithdrawal.ValidatorIndex)
+				withdraw.Address = rawWithdrawal.Address
+				withdraw.Amount = rawWithdrawal.Amount
+				withdrawals = append(withdrawals, withdraw)
+			}
+
+			b.ExecutionPayload = &types.ExecutionPayload{
+				ParentHash:    payload.ParentHash,
+				FeeRecipient:  payload.FeeRecipient,
+				StateRoot:     payload.StateRoot,
+				ReceiptsRoot:  payload.ReceiptsRoot,
+				LogsBloom:     payload.LogsBloom,
+				Random:        payload.PrevRandao,
+				BlockNumber:   payload.BlockNumber,
+				GasLimit:      payload.GasLimit,
+				GasUsed:       payload.GasUsed,
+				Timestamp:     payload.Timestamp,
+				ExtraData:     payload.ExtraData,
+				BaseFeePerGas: binary.LittleEndian.Uint64(payload.BaseFeePerGas), // TODO, this is problematic
+				BlockHash:     payload.BlockHash,
+				Transactions:  txs,
+				Withdrawals:   withdrawals,
+			}
 		}
 	}
 
@@ -1460,18 +1529,22 @@ func (pc *PrysmClient) GetSlotData(block *types.Block) (*types.SlotData, error) 
 	//var validatorWithdrawal7d map[uint64]uint64
 	//var validatorWithdrawal31d map[uint64]uint64
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		start := time.Now()
-		var err error
-		validatorWithdrawal, err = db.GetAllValidatorTotalWithdrawals(uint64(slot))
-		if err != nil {
-			logrus.Errorf("error retrieving validator total withdrawal for slot %v : %v", slot, err)
-			return
-		}
-		logger.Printf("retrieved data for %v validator balances for slot %v (1d) took %v", len(parsedValidators.Data), slot1d, time.Since(start))
-	}()
+	if utils.Config.Indexer.SkipValidatorWithdrawals {
+		validatorWithdrawal = make(map[uint64]uint64)
+	} else {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			start := time.Now()
+			var err error
+			validatorWithdrawal, err = db.GetAllValidatorTotalWithdrawals(uint64(slot))
+			if err != nil {
+				logrus.Errorf("error retrieving validator total withdrawal for slot %v : %v", slot, err)
+				return
+			}
+			logger.Printf("retrieved data for %v validator balances for slot %v (1d) took %v", len(parsedValidators.Data), slot1d, time.Since(start))
+		}()
+	}
 /*
 	wg.Add(1)
 	go func() {

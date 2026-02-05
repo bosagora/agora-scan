@@ -47,6 +47,15 @@ indexer:
   enabled: true # Enable or disable the indexing service
   fullIndexOnStartup: false # Perform a one time full db index on startup
   indexMissingEpochsOnStartup: false # Check for missing epochs and export them after startup
+  # Epoch-based processing (no real-time slot stream): run full check when new epoch + N slots
+  pollIntervalSeconds: 10    # seconds between chain head polls (default 10)
+  processDelaySlots: 2       # index closed epoch after this many slots in next epoch (default 2)
+  maxEpochsPerCheck: 0       # max epochs to export per run when catching up (0 = no limit)
+  # Reduce load by skipping non-essential data (no DB schema change)
+  skipExecutionPayloadParsing: false # skip tx decode in blocks; minimal payload only
+  skipValidatorWithdrawals: false    # skip validator withdrawal DB lookups
+  skipExitedValidators: false        # do not index exited/withdrawn validators
+  txDecodeWorkers: 4                 # parallel workers for tx decode (0 = 4)
   node:
     host: "localhost" # Address of the backend node
     port: "4000" # port of the backend node
